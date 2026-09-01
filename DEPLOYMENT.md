@@ -1,95 +1,112 @@
-# LinkUp Deployment & Operations Guide
+# Deploying LinkUp
 
-This guide details how to deploy, configure, and maintain **LinkUp** within the KaiCorp Labs sovereign infrastructure.
+Everything below uses `example.com`. Substitute your own domains — and if you
+copy a URL from here into a running instance without changing it, you will be
+sending your users to somebody else's identity provider.
 
----
+## What you are deploying
 
-## 🏗️ Architecture Overview
+One container. A Go binary with the dashboard templates embedded in it, an
+in-memory cache, and a SQLite file on a volume. No database server, no
+frontend build, no sidecar.
 
-* **Engine**: Go 1.24+ compiled to an isolated static binary with embedded templates & styles (`embed.FS`).
-* **Storage**: SQLite 3 with Write-Ahead Logging (`WAL`) mode enabled.
-* **Cache**: In-memory LRU cache (< 100ns resolution latency for warm slugs).
-* **Isolation**: Non-root container (`UID 10001`), `cap_drop: [ALL]`, bounded to loopback `127.0.0.1:3464`.
-* **Auth**: OIDC via Authentik with encrypted AES-GCM session cookies.
-
----
-
-## 🔐 Authentik OIDC Configuration
-
-1. **Create Provider in Authentik**:
-   * **Type**: `OAuth2/OpenID Provider`.
-   * **Name**: `LinkUp Provider`.
-   * **Client Type**: `Confidential`.
-   * **Client ID**: (e.g. `linkup-client-id`).
-   * **Client Secret**: (Generate a secure string).
-   * **Redirect URIs**: `https://link.kaicorplabs.com/auth/callback`.
-   * **Signing Key**: Select Authentik default self-signed cert.
-   * **Scopes**: `openid`, `profile`, `email`.
-
-2. **Create Application in Authentik**:
-   * **Name**: `LinkUp`.
-   * **Slug**: `linkup`.
-   * **Provider**: Select `LinkUp Provider`.
-   * **Launch URL**: `https://link.kaicorplabs.com`.
-
----
-
-## 🚀 Production Deployment
-
-### 1. Directory Structure on Host
-
-```bash
-sudo mkdir -p /srv/kaicorp/linkup/data
-sudo chown -R 10001:10001 /srv/kaicorp/linkup/data
-sudo chmod 750 /srv/kaicorp/linkup/data
+```
+internet ──▶ reverse proxy (TLS) ──▶ 127.0.0.1:3464 ──▶ linkup ──▶ /data/linkup.db
 ```
 
-### 2. Environment File (`.env`)
+The container binds to loopback on purpose. Terminating TLS and reaching the
+internet is the reverse proxy's job.
 
-Create `/srv/kaicorp/linkup/.env`:
+## 1. Identity provider
 
-```ini
-LINKUP_PORT=3464
-LINKUP_HOST=0.0.0.0
-LINKUP_PUBLIC_HOST=link.kaicorplabs.com
-LINKUP_DEFAULT_DOMAIN=link.kaicorplabs.com
+LinkUp authenticates the dashboard with OpenID Connect. Public redirects need no
+sign-in; creating and managing links does.
 
-# 32+ char secret key
-LINKUP_SESSION_SECRET=replace_with_a_secure_random_hex_string_min_32_chars
+Create a **confidential** client with the authorization code flow and set the
+redirect URI to `https://link.example.com/auth/callback`.
 
-# Authentik OIDC Settings
-LINKUP_OIDC_CLIENT_ID=linkup-client-id
-LINKUP_OIDC_CLIENT_SECRET=linkup-client-secret
-LINKUP_OIDC_DISCOVERY_URL=https://auth.kaicorplabs.com/application/o/linkup/.well-known/openid-configuration
-LINKUP_OIDC_REDIRECT_URI=https://link.kaicorplabs.com/auth/callback
-LINKUP_ENROLL_URL=https://auth.kaicorplabs.com/if/flow/default-enrollment-flow/
-LINKUP_ACCOUNT_URL=https://auth.kaicorplabs.com/if/user/#/settings
+**One trap worth naming, because it costs an afternoon.** In Authentik, a
+provider created with an empty *Grant types* list rejects the request with
+`invalid_request` **before showing a login page and without recording an
+event** — so it looks like nothing happened at all. Make sure
+`authorization_code` (and `refresh_token`, if you want sessions to renew) are
+selected. To check from outside, ask for the authorize endpoint by hand: if it
+redirects to a login flow you are fine, if it bounces straight back to your
+callback with `error=`, that list is empty.
 
-# Persistence & Integrations
+**Administration by group is strongly preferred.** Emit a `groups` claim and set
+`LINKUP_ADMIN_GROUP`. Revoking an administrator then means removing them from a
+group — no file to edit, no restart. `LINKUP_ADMIN_USERS` exists for providers
+that emit no groups and is ignored whenever a group is configured, so the two
+can never disagree.
+
+## 2. Host directories
+
+```bash
+sudo install -d -m 0700 -o 10001 -g 10001 /srv/linkup/data
+```
+
+`10001` is the unprivileged user inside the image. The directory has to be
+writable by it and by nothing else.
+
+## 3. Configuration
+
+```dotenv
+LINKUP_PUBLIC_HOST=link.example.com
+LINKUP_DEFAULT_DOMAIN=link.example.com
+LINKUP_SESSION_SECRET=          # openssl rand -hex 32
+
+LINKUP_OIDC_DISCOVERY_URL=https://auth.example.com/.well-known/openid-configuration
+LINKUP_OIDC_CLIENT_ID=
+LINKUP_OIDC_CLIENT_SECRET=
+LINKUP_OIDC_REDIRECT_URI=https://link.example.com/auth/callback
+LINKUP_ENROLL_URL=https://auth.example.com/if/flow/enroll-linkup/
+LINKUP_ACCOUNT_URL=https://auth.example.com/if/user/
+
+LINKUP_ADMIN_GROUP=linkup-admins
 LINKUP_DB_PATH=/data/linkup.db
-LINKUP_QRFORGE_URL=https://qr.kaicorplabs.com
-LINKUP_ADMIN_USERS=admin
+LINKUP_QRFORGE_URL=https://qr.example.com
 ```
 
-### 3. Start Container
+Two things to get right:
+
+- **Quote any value containing a space** if your setup loads this file with a
+  shell rather than through Docker's own parser. `KEY=two words` unquoted makes
+  a shell assign `KEY=two` and then try to run `words`, and the service dies in
+  a restart loop with an error that never mentions the variable.
+- **Never set `LINKUP_DEV_MODE=true` in production.** In that mode with OIDC
+  unconfigured, every request without a cookie is treated as an administrator.
+  The server refuses to start in that combination unless bound to loopback, but
+  do not rely on the guard: do not set the variable.
+
+## 4. Pin the image and start
+
+```yaml
+image: ghcr.io/ulzuhan/linkup:0.1.0@sha256:<digest>
+```
+
+Pin by digest, not by tag. A tag can be moved by whoever publishes it. The
+release workflow prints the digest in its job summary.
 
 ```bash
-docker compose -f compose.yaml up -d --build
+docker compose up -d
+docker compose ps                                                   # healthy
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3464/healthz   # 200
 ```
 
----
+The compose file in this repository already applies `read_only`, drops all
+capabilities, forbids privilege escalation, caps memory and PIDs and rotates
+logs. Unrotated container logs are the most common way a small self-hosted box
+runs out of disk.
 
-## 🌐 Reverse Proxy Configuration
+## 5. Reverse proxy
 
-### Caddyfile
+### Caddy
 
-```caddy
-link.kaicorplabs.com {
-    reverse_proxy 127.0.0.1:3464 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+```
+link.example.com {
+    encode gzip
+    reverse_proxy 127.0.0.1:3464
 }
 ```
 
@@ -97,26 +114,46 @@ link.kaicorplabs.com {
 
 ```nginx
 server {
-    server_name link.kaicorplabs.com;
     listen 443 ssl http2;
+    server_name link.example.com;
 
     location / {
         proxy_pass http://127.0.0.1:3464;
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
----
+Do **not** add `X-Forwarded-For`. LinkUp does not read it, and forwarding a
+visitor's address to a service that promises never to look at it only creates a
+place for it to leak from.
 
-## 💾 Backup & Restore
+## Backup and restore
 
-Since SQLite is operating in WAL mode, create atomic hot backups using `sqlite3`:
+SQLite is running in WAL mode, so copying the `.db` file while the service is
+writing gives you a corrupt backup. Use the online backup API:
 
 ```bash
-# Backup live database without stopping the container
-sqlite3 /srv/kaicorp/linkup/data/linkup.db ".backup '/srv/kaicorp/linkup/backups/linkup_$(date +%Y%m%d_%H%M%S).db'"
+docker compose exec linkup sh -c 'sqlite3 /data/linkup.db ".backup /data/backup.db"' \
+  2>/dev/null || docker compose stop linkup   # if sqlite3 is not in the image
+cp /srv/linkup/data/backup.db /destination/linkup-$(date +%F).db
 ```
+
+The image is minimal and does not ship `sqlite3`. The dependable route is to
+stop the container for the seconds the copy takes — a redirect service can
+afford that — or to snapshot the volume.
+
+To restore: stop, replace `linkup.db` (deleting any `-wal` and `-shm` beside
+it), start.
+
+## Upgrading
+
+Change the digest, then:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Schema migrations run at startup, inside `database.Open`. To roll back, put the
+previous digest back — but read what the newer version's migration did first: an
+applied migration does not undo itself.

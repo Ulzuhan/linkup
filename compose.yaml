@@ -1,23 +1,68 @@
+# LinkUp — self-hosting example.
+#
+# Hardened by default. Every line below that is not obviously about running the
+# service is about limiting what it can do if something goes wrong:
+#
+#   read_only          the container cannot write to its own filesystem; the
+#                      only writable places are /data and the tmpfs below
+#   cap_drop: ALL      no Linux capabilities at all — it serves HTTP, it does
+#                      not need to bind low ports or change ownership
+#   no-new-privileges  a process inside can never gain more than it started with
+#   pids_limit         a fork bomb inside stays inside
+#   loopback binding   the port is NOT published to the network. Put a reverse
+#                      proxy in front; see DEPLOYMENT.md
+#
+# Pin by digest in production. A tag can be moved under your feet by whoever
+# publishes it — including us:
+#   image: ghcr.io/ulzuhan/linkup:0.1.0@sha256:<digest>
+
 services:
   linkup:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: kaicorplabs/linkup:latest
+    image: ghcr.io/ulzuhan/linkup:latest
     container_name: linkup
     restart: unless-stopped
+    init: true
+
+    # Loopback on purpose. Reaching this from outside is the reverse proxy's
+    # job, not the container's.
     ports:
       - "127.0.0.1:3464:3464"
+
+    # The SQLite database and its WAL files. Must be writable and must survive
+    # the container; everything else is disposable.
     volumes:
-      - /srv/kaicorp/linkup/data:/data
+      - ./data:/data
+
+    # Configuration and secrets. Anyone able to read this file can read your
+    # OIDC client secret, so keep it 0600 and out of version control. If your
+    # threat model says the user running compose should not be able to read it
+    # either, mount it instead and load it from inside the entrypoint.
     env_file:
       - .env
+
+    read_only: true
+    tmpfs:
+      # uid/gid 10001 is the unprivileged user the image runs as.
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=0700,uid=10001,gid=10001
+
+    cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    mem_limit: 128M
+    pids_limit: 128
+
+    # A Go binary with an in-memory cache. 128 MB is generous; the ceiling is
+    # there so a leak becomes a restart instead of a dead host.
+    mem_limit: 128m
     cpus: 0.5
+
+    # Without this, container logs grow until the disk is full. It is the
+    # single most common way a small self-hosted box dies.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3464/healthz"]
       interval: 30s

@@ -1,0 +1,33 @@
+# The image that is running today was scanned the day it was built, and the
+# world has moved since. This looks again every Monday at what is published, so
+# a CVE disclosed after the release does not sit unnoticed until the next one.
+
+name: Weekly image scan
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    name: Scan the published image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:latest
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif

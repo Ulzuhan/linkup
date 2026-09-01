@@ -1,0 +1,26 @@
+services:
+  linkup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kaicorplabs/linkup:latest
+    container_name: linkup
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3464:3464"
+    volumes:
+      - /srv/kaicorp/linkup/data:/data
+    env_file:
+      - .env
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128M
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3464/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

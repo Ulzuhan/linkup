@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} - LinkUp | KaiCorp Labs</title>
+  <meta name="description" content="Privacy-first URL shortener, clean redirect engine and tracking stripper.">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
+</head>
+<body>
+  <header>
+    <div class="container nav-wrapper">
+      <a href="/" class="brand">
+        <div class="brand-icon">L</div>
+        <div>
+          <span class="brand-title" style="font-weight: 700; font-size: 1.25rem;">LinkUp</span>
+          <span class="badge-privacy" style="margin-left: 0.5rem;">🔒 Zero Tracking</span>
+        </div>
+      </a>
+      
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        {{if .User.Username}}
+          <span class="mono" style="font-size: 0.85rem; color: var(--text-secondary);">
+            {{.User.Username}}
+            {{if .User.IsAdmin}}<span class="badge-privacy" style="color: #67e8f9; background: rgba(6,182,212,0.15); border-color: rgba(6,182,212,0.3); margin-left: 0.35rem;">ADMIN</span>{{end}}
+          </span>
+          {{if .AccountURL}}
+            <a href="{{.AccountURL}}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Account</a>
+          {{end}}
+          <a href="/auth/logout" class="btn btn-secondary btn-sm">Logout</a>
+        {{else}}
+          {{if .EnrollURL}}
+            <a href="{{.EnrollURL}}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Register</a>
+          {{end}}
+          <a href="/auth/login" class="btn btn-primary btn-sm">Login with Authentik</a>
+        {{end}}
+      </div>
+    </div>
+  </header>
+
+  <main style="flex: 1; padding: 2rem 0;">
+    {{template "content" .}}
+  </main>
+
+  <footer>
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong>LinkUp</strong> &copy; 2026 KaiCorp Labs. Sovereign, privacy-first redirect infrastructure.
+      </div>
+      <div style="display: flex; gap: 1.5rem; font-size: 0.8rem;">
+        <span>Zero IP Logging</span>
+        <span>•</span>
+        <span>Auto Tracker Stripper</span>
+        <span>•</span>
+        <a href="{{.QRForgeURL}}" target="_blank" rel="noopener" style="color: var(--accent-cyan); text-decoration: none;">QR-Forge</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

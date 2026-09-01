@@ -1,0 +1,70 @@
+{{define "content"}}
+<div class="container" style="max-width: 680px; padding-top: 2rem;">
+  <div class="card" style="text-align: center;">
+    <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); color: var(--accent-cyan); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1.25rem;">
+      👁️
+    </div>
+
+    <h1 style="font-size: 1.6rem; margin-bottom: 0.5rem;">Clean Destination Preview</h1>
+    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">
+      LinkUp inspected and sanitized this destination before you navigate.
+    </p>
+
+    <!-- Destination Box -->
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem;">
+      <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+        Final Destination Target
+      </div>
+      <div class="mono" style="font-size: 0.95rem; color: var(--text-primary); word-break: break-all; margin-bottom: 0.75rem;">
+        {{.CleanURL}}
+      </div>
+      
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.75rem;">
+        <span class="badge-privacy">🔒 Protocol Verified</span>
+        <span class="badge-privacy">🛡️ Anti-Profiling Applied</span>
+        {{if .HasPIN}}<span class="status-pill status-locked">🔐 PIN Protected</span>{{end}}
+      </div>
+    </div>
+
+    <!-- Stripped Telemetry -->
+    {{if .StrippedParams}}
+      <div style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.25); border-radius: 0.75rem; padding: 1rem; text-align: left; margin-bottom: 1.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 600; color: #fda4af; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>✂️ Tracking Parameters Neutralized ({{len .StrippedParams}}):</span>
+        </div>
+        <div>
+          {{range .StrippedParams}}
+            <span class="tracker-badge">{{.}}</span>
+          {{end}}
+        </div>
+      </div>
+    {{end}}
+
+    {{if .IsExpired}}
+      <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center;">
+        <div style="font-weight: 700; margin-bottom: 0.25rem;">⚠️ Link Expired or Depleted</div>
+        <p style="font-size: 0.85rem;">{{.ExpiryReason}}</p>
+      </div>
+    {{else}}
+      <!-- Actions -->
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        {{if .HasPIN}}
+          <a href="/pin/{{.Slug}}" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+            🔓 Unlock with PIN & Proceed
+          </a>
+        {{else}}
+          <a href="/{{.Slug}}?direct=true" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+            🚀 Proceed to Destination
+          </a>
+        {{end}}
+        
+        {{if .QRForgeLink}}
+          <a href="{{.QRForgeLink}}" target="_blank" rel="noopener" class="btn btn-secondary" style="padding: 0.75rem 1.5rem;">
+            📱 Create QR in QR-Forge
+          </a>
+        {{end}}
+      </div>
+    {{end}}
+  </div>
+</div>
+{{end}}

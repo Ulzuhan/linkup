@@ -6,7 +6,7 @@
 *.dylib
 bin/
 dist/
-linkup
+/linkup
 
 # Test binary, built with `go test -c`
 *.test

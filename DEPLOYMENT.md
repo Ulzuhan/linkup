@@ -68,7 +68,7 @@ LINKUP_ACCOUNT_URL=https://auth.kaicorplabs.com/if/user/#/settings
 # Persistence & Integrations
 LINKUP_DB_PATH=/data/linkup.db
 LINKUP_QRFORGE_URL=https://qr.kaicorplabs.com
-LINKUP_ADMIN_USERS=admin,ulzuhan
+LINKUP_ADMIN_USERS=admin
 ```
 
 ### 3. Start Container

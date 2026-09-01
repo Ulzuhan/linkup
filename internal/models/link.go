@@ -12,32 +12,32 @@ type ABVariant struct {
 }
 
 type Link struct {
-	ID            string            `json:"id"`
-	Slug          string            `json:"slug"`
-	Domain        string            `json:"domain"` // "" means default public host
-	TargetURL     string            `json:"target_url"`
-	OriginalURL   string            `json:"original_url"`
-	Title         string            `json:"title"`
-	FolderID      *string           `json:"folder_id,omitempty"`
-	Tags          []string          `json:"tags,omitempty"`
-	HasPIN        bool              `json:"has_pin"`
-	PinHash       string            `json:"-"` // never exposed in JSON
-	RedirectType  int               `json:"redirect_type"`
-	ExpiresAt     *int64            `json:"expires_at,omitempty"`
-	MaxClicks     *int              `json:"max_clicks,omitempty"`
-	ClickCount    int               `json:"click_count"`
-	LastClickedAt *int64            `json:"last_clicked_at,omitempty"`
-	CreatedBy     string            `json:"created_by"`
-	IsActive      bool              `json:"is_active"`
-	
+	ID            string   `json:"id"`
+	Slug          string   `json:"slug"`
+	Domain        string   `json:"domain"` // "" means default public host
+	TargetURL     string   `json:"target_url"`
+	OriginalURL   string   `json:"original_url"`
+	Title         string   `json:"title"`
+	FolderID      *string  `json:"folder_id,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
+	HasPIN        bool     `json:"has_pin"`
+	PinHash       string   `json:"-"` // never exposed in JSON
+	RedirectType  int      `json:"redirect_type"`
+	ExpiresAt     *int64   `json:"expires_at,omitempty"`
+	MaxClicks     *int     `json:"max_clicks,omitempty"`
+	ClickCount    int      `json:"click_count"`
+	LastClickedAt *int64   `json:"last_clicked_at,omitempty"`
+	CreatedBy     string   `json:"created_by"`
+	IsActive      bool     `json:"is_active"`
+
 	// Smart Routing Options
 	IOSURL        string            `json:"ios_url,omitempty"`
 	AndroidURL    string            `json:"android_url,omitempty"`
 	LocaleRouting map[string]string `json:"locale_routing,omitempty"` // e.g. {"es": "https://...", "fr": "https://..."}
 	ABVariants    []ABVariant       `json:"ab_variants,omitempty"`
 
-	CreatedAt     int64             `json:"created_at"`
-	UpdatedAt     int64             `json:"updated_at"`
+	CreatedAt int64 `json:"created_at"`
+	UpdatedAt int64 `json:"updated_at"`
 }
 
 func (l *Link) IsExpired() bool {
@@ -71,36 +71,36 @@ func (l *Link) ExpiryReason() string {
 }
 
 type CreateLinkRequest struct {
-	URL            string            `json:"url"`
-	CustomSlug     string            `json:"custom_slug,omitempty"`
-	Domain         string            `json:"domain,omitempty"`
-	Title          string            `json:"title,omitempty"`
-	FolderID       *string           `json:"folder_id,omitempty"`
-	Tags           []string          `json:"tags,omitempty"`
-	PIN            string            `json:"pin,omitempty"`
-	RedirectType   int               `json:"redirect_type,omitempty"` // 301 or 302 (default: 302)
-	ExpiresInHours *int              `json:"expires_in_hours,omitempty"`
-	ExpiresAt      *int64            `json:"expires_at,omitempty"`
-	MaxClicks      *int              `json:"max_clicks,omitempty"`
-	
+	URL            string   `json:"url"`
+	CustomSlug     string   `json:"custom_slug,omitempty"`
+	Domain         string   `json:"domain,omitempty"`
+	Title          string   `json:"title,omitempty"`
+	FolderID       *string  `json:"folder_id,omitempty"`
+	Tags           []string `json:"tags,omitempty"`
+	PIN            string   `json:"pin,omitempty"`
+	RedirectType   int      `json:"redirect_type,omitempty"` // 301 or 302 (default: 302)
+	ExpiresInHours *int     `json:"expires_in_hours,omitempty"`
+	ExpiresAt      *int64   `json:"expires_at,omitempty"`
+	MaxClicks      *int     `json:"max_clicks,omitempty"`
+
 	// Conditional Routing fields
-	IOSURL         string            `json:"ios_url,omitempty"`
-	AndroidURL     string            `json:"android_url,omitempty"`
-	LocaleRouting  map[string]string `json:"locale_routing,omitempty"`
-	ABVariants     []ABVariant       `json:"ab_variants,omitempty"`
+	IOSURL        string            `json:"ios_url,omitempty"`
+	AndroidURL    string            `json:"android_url,omitempty"`
+	LocaleRouting map[string]string `json:"locale_routing,omitempty"`
+	ABVariants    []ABVariant       `json:"ab_variants,omitempty"`
 }
 
 type UpdateLinkRequest struct {
-	TargetURL     *string           `json:"target_url,omitempty"`
-	Title         *string           `json:"title,omitempty"`
-	FolderID      *string           `json:"folder_id,omitempty"`
-	Tags          *[]string         `json:"tags,omitempty"`
-	PIN           *string           `json:"pin,omitempty"` // "" means remove PIN, non-empty means update
-	ExpiresAt     *int64            `json:"expires_at,omitempty"`
-	MaxClicks     *int              `json:"max_clicks,omitempty"`
-	IsActive      *bool             `json:"is_active,omitempty"`
-	IOSURL        *string           `json:"ios_url,omitempty"`
-	AndroidURL    *string           `json:"android_url,omitempty"`
+	TargetURL     *string            `json:"target_url,omitempty"`
+	Title         *string            `json:"title,omitempty"`
+	FolderID      *string            `json:"folder_id,omitempty"`
+	Tags          *[]string          `json:"tags,omitempty"`
+	PIN           *string            `json:"pin,omitempty"` // "" means remove PIN, non-empty means update
+	ExpiresAt     *int64             `json:"expires_at,omitempty"`
+	MaxClicks     *int               `json:"max_clicks,omitempty"`
+	IsActive      *bool              `json:"is_active,omitempty"`
+	IOSURL        *string            `json:"ios_url,omitempty"`
+	AndroidURL    *string            `json:"android_url,omitempty"`
 	LocaleRouting *map[string]string `json:"locale_routing,omitempty"`
 	ABVariants    *[]ABVariant       `json:"ab_variants,omitempty"`
 }

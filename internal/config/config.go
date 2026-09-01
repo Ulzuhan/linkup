@@ -10,21 +10,21 @@ import (
 )
 
 type Config struct {
-	Port            int
-	Host            string
-	PublicHost      string
-	DefaultDomain   string
-	SessionSecret   []byte
+	Port             int
+	Host             string
+	PublicHost       string
+	DefaultDomain    string
+	SessionSecret    []byte
 	OIDCClientID     string
 	OIDCClientSecret string
-	OIDCIssuerURL   string
-	OIDCRedirectURI string
-	EnrollURL       string
-	AccountURL      string
-	DBPath          string
-	QRForgeURL      string
-	AdminUsers      map[string]bool
-	DevMode         bool
+	OIDCIssuerURL    string
+	OIDCRedirectURI  string
+	EnrollURL        string
+	AccountURL       string
+	DBPath           string
+	QRForgeURL       string
+	AdminUsers       map[string]bool
+	DevMode          bool
 }
 
 func Load() *Config {

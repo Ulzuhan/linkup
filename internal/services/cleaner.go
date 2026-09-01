@@ -10,21 +10,21 @@ import (
 // Known tracking and surveillance query parameters
 var knownTrackerParams = map[string]bool{
 	// Google Analytics / Urchin
-	"utm_source":          true,
-	"utm_medium":          true,
-	"utm_campaign":        true,
-	"utm_term":            true,
-	"utm_content":         true,
-	"utm_id":              true,
-	"utm_source_platform": true,
-	"utm_creative_format": true,
+	"utm_source":           true,
+	"utm_medium":           true,
+	"utm_campaign":         true,
+	"utm_term":             true,
+	"utm_content":          true,
+	"utm_id":               true,
+	"utm_source_platform":  true,
+	"utm_creative_format":  true,
 	"utm_marketing_tactic": true,
-	"utm_reader":          true,
-	"utm_name":            true,
-	"utm_cid":             true,
-	"utm_viz_id":          true,
-	"utm_pubreferrer":     true,
-	"utm_swu":             true,
+	"utm_reader":           true,
+	"utm_name":             true,
+	"utm_cid":              true,
+	"utm_viz_id":           true,
+	"utm_pubreferrer":      true,
+	"utm_swu":              true,
 
 	// Google Ads / DoubleClick
 	"gclid":      true,
@@ -85,15 +85,15 @@ var knownTrackerParams = map[string]bool{
 	"hsa_ol":  true,
 
 	// Marketo / Pardot / Vero / Klaviyo
-	"mkt_tok":  true,
-	"vero_id":  true,
+	"mkt_tok":   true,
+	"vero_id":   true,
 	"vero_conv": true,
-	"_kx":      true,
-	"wickedid": true,
+	"_kx":       true,
+	"wickedid":  true,
 
 	// Share Telemetry (Spotify, YouTube, etc.)
-	"si":       true, // Spotify/YouTube share identifier
-	"feature":  true, // YouTube feature share tracker
+	"si":      true, // Spotify/YouTube share identifier
+	"feature": true, // YouTube feature share tracker
 }
 
 // CleanURL sanitizes an input URL by removing tracking query parameters and validating protocols.

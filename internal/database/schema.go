@@ -32,7 +32,7 @@ func (db *DB) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_links_created_by ON links(created_by);`,
 		`CREATE INDEX IF NOT EXISTS idx_links_folder_id ON links(folder_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_links_expires_at ON links(expires_at);`,
-		
+
 		`CREATE TABLE IF NOT EXISTS blocked_domains (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			domain TEXT UNIQUE NOT NULL,

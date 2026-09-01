@@ -39,10 +39,10 @@ var (
 )
 
 type LinkService struct {
-	db          *database.DB
-	cache       *LinkCache
-	webhooks    *WebhookService
-	ownHost     string
+	db       *database.DB
+	cache    *LinkCache
+	webhooks *WebhookService
+	ownHost  string
 }
 
 func NewLinkService(db *database.DB, cache *LinkCache, webhooks *WebhookService, ownHost string) *LinkService {

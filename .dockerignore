@@ -1,0 +1,14 @@
+.git
+.gitignore
+.dockerignore
+.env
+.env.*
+*.db
+*.db-*
+data/
+bin/
+dist/
+tests/
+*.md
+LICENSE
+Makefile

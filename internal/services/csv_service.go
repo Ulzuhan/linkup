@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/models"
 )
 
 type BulkImportResult struct {

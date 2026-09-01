@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/google/uuid"
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/models"
 )
 
 type FolderService struct {

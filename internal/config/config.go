@@ -10,21 +10,22 @@ import (
 )
 
 type Config struct {
-	Port             int
-	Host             string
-	PublicHost       string
-	DefaultDomain    string
-	SessionSecret    []byte
-	OIDCClientID     string
-	OIDCClientSecret string
-	OIDCIssuerURL    string
-	OIDCRedirectURI  string
-	EnrollURL        string
-	AccountURL       string
-	DBPath           string
-	QRForgeURL       string
-	AdminUsers       map[string]bool
-	DevMode          bool
+	Port                int
+	Host                string
+	PublicHost          string
+	DefaultDomain       string
+	SessionSecret       []byte
+	OIDCClientID        string
+	OIDCClientSecret    string
+	OIDCIssuerURL       string
+	OIDCRedirectURI     string
+	EnrollURL           string
+	AccountURL          string
+	DBPath              string
+	QRForgeURL          string
+	AdminUsers          map[string]bool
+	DevMode             bool
+	AllowPrivateTargets bool
 }
 
 func Load() *Config {
@@ -35,6 +36,14 @@ func Load() *Config {
 	dbPath := getEnv("LINKUP_DB_PATH", "./data/linkup.db")
 	qrForgeURL := getEnv("LINKUP_QRFORGE_URL", "https://qr.kaicorplabs.com")
 	devMode := getEnvAsBool("LINKUP_DEV_MODE", false)
+
+	// Shortening an intranet URL is a legitimate thing for a self-hosted tool to
+	// do — someone may well want link.example.com/wiki to point at 10.0.0.5. But
+	// it is also how a shortener becomes a probe for other people's networks, so
+	// the default is no and the exception is deliberate. Webhooks are NOT covered
+	// by this: those are requests the server itself makes, and there the answer is
+	// always no.
+	allowPrivateTargets := getEnvAsBool("LINKUP_ALLOW_PRIVATE_TARGETS", false)
 
 	// Session Secret
 	secretStr := os.Getenv("LINKUP_SESSION_SECRET")
@@ -75,23 +84,59 @@ func Load() *Config {
 		}
 	}
 
-	return &Config{
-		Port:             port,
-		Host:             host,
-		PublicHost:       publicHost,
-		DefaultDomain:    defaultDomain,
-		SessionSecret:    sessionSecret,
-		OIDCClientID:     oidcClientID,
-		OIDCClientSecret: oidcClientSecret,
-		OIDCIssuerURL:    oidcIssuerURL,
-		OIDCRedirectURI:  oidcRedirectURI,
-		EnrollURL:        enrollURL,
-		AccountURL:       accountURL,
-		DBPath:           dbPath,
-		QRForgeURL:       strings.TrimRight(qrForgeURL, "/"),
-		AdminUsers:       adminUsersMap,
-		DevMode:          devMode,
+	cfg := &Config{
+		Port:                port,
+		Host:                host,
+		PublicHost:          publicHost,
+		DefaultDomain:       defaultDomain,
+		SessionSecret:       sessionSecret,
+		OIDCClientID:        oidcClientID,
+		OIDCClientSecret:    oidcClientSecret,
+		OIDCIssuerURL:       oidcIssuerURL,
+		OIDCRedirectURI:     oidcRedirectURI,
+		EnrollURL:           enrollURL,
+		AccountURL:          accountURL,
+		DBPath:              dbPath,
+		QRForgeURL:          strings.TrimRight(qrForgeURL, "/"),
+		AdminUsers:          adminUsersMap,
+		DevMode:             devMode,
+		AllowPrivateTargets: allowPrivateTargets,
 	}
+
+	cfg.refuseUnsafeDevMode()
+	return cfg
+}
+
+// refuseUnsafeDevMode aborts startup rather than serving an open panel.
+//
+// WHY THIS IS FATAL AND NOT A WARNING. In development mode with OIDC absent,
+// AuthService.GetSession hands a session with IsAdmin=true to anyone arriving
+// without a cookie. That is fine on a laptop and catastrophic anywhere else,
+// and the way it gets anywhere else is never a decision — it is a forgotten
+// variable, or a secrets file that failed to load and took the OIDC settings
+// with it. A warning in a log nobody reads does not stop that; refusing to
+// start does.
+//
+// Better a door believed open that is shut, than the other way round.
+func (c *Config) refuseUnsafeDevMode() {
+	if !c.DevMode || c.IsOIDCConfigured() {
+		return
+	}
+	if isLoopbackHost(c.Host) {
+		return
+	}
+	log.Fatalf("[FATAL] LINKUP_DEV_MODE is on, OIDC is not configured and the server "+
+		"would listen on %q. In that combination every request without a cookie is "+
+		"treated as an administrator. Refusing to start. Bind to 127.0.0.1 for local "+
+		"development, or configure OIDC.", c.Host)
+}
+
+func isLoopbackHost(host string) bool {
+	switch strings.ToLower(strings.TrimSpace(host)) {
+	case "127.0.0.1", "localhost", "::1", "[::1]":
+		return true
+	}
+	return false
 }
 
 func (c *Config) IsOIDCConfigured() bool {

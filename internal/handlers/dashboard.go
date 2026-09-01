@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
-	"github.com/kaicorplabs/linkup/internal/web"
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/web"
 )
 
 type DashboardHandler struct {

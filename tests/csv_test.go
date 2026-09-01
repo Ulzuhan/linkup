@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 func TestCSVBulkImportAndExport(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kaicorplabs/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/models"
 )
 
 // RouterEngine handles conditional routing (Device, Locale, A/B Testing) in-memory

@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 func TestSmartDeviceRouting(t *testing.T) {

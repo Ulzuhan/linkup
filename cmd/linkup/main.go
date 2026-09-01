@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/handlers"
-	"github.com/kaicorplabs/linkup/internal/services"
-	"github.com/kaicorplabs/linkup/internal/web"
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/handlers"
+	"github.com/Ulzuhan/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/web"
 )
 
 func main() {
@@ -25,6 +25,9 @@ func main() {
 
 	// 1. Load configuration
 	cfg := config.Load()
+
+	// Process-wide destination policy, before anything can create a link.
+	services.SetAllowPrivateTargets(cfg.AllowPrivateTargets)
 
 	// 2. Initialize database
 	db, err := database.Open(cfg.DBPath)

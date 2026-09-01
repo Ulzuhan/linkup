@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
 )
 
 type FolderHandler struct {

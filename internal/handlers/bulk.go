@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 type BulkHandler struct {

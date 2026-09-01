@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/models"
 	"golang.org/x/oauth2"
 )
 

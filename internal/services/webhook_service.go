@@ -10,34 +10,63 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/google/uuid"
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/models"
 )
 
 type WebhookService struct {
 	db         *database.DB
 	httpClient *http.Client
+	// validateTarget gates every user-supplied URL. It is a field and not a
+	// direct call so tests can reach an httptest server, which always binds
+	// loopback and is therefore refused by the real validator. Production code
+	// never replaces it; the only setter is named for what it is.
+	validateTarget func(string) (*url.URL, error)
 }
 
 func NewWebhookService(db *database.DB) *WebhookService {
 	return &WebhookService{
 		db: db,
-		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
+		// The hardened client: bounded and, above all, it does not follow
+		// redirects. See egress.go for why that matters.
+		httpClient:     NewOutboundClient(5 * time.Second),
+		validateTarget: ValidateOutboundURL,
+	}
+}
+
+// AllowReservedTargetsForTesting relaxes destination checks to scheme only.
+//
+// It exists so the delivery and signature tests can talk to an httptest server
+// on loopback. Calling it from anything that is not a test re-opens the SSRF
+// this validation closes, and the name is deliberately impossible to mistake
+// for something reasonable in a code review.
+func (s *WebhookService) AllowReservedTargetsForTesting() {
+	s.validateTarget = func(raw string) (*url.URL, error) {
+		parsed, err := url.Parse(strings.TrimSpace(raw))
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrInvalidOutboundURL, err)
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return nil, fmt.Errorf("%w: scheme %q is not allowed", ErrInvalidOutboundURL, parsed.Scheme)
+		}
+		return parsed, nil
 	}
 }
 
 // Create registers a new webhook endpoint
 func (s *WebhookService) Create(req models.CreateWebhookRequest, username string) (*models.Webhook, error) {
-	url := strings.TrimSpace(req.URL)
-	if url == "" || (!strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://")) {
-		return nil, fmt.Errorf("valid webhook HTTP/HTTPS URL is required")
+	// Refuse anything we are not willing to call before it ever reaches the
+	// database. A stored bad URL is a stored SSRF.
+	parsed, err := s.validateTarget(req.URL)
+	if err != nil {
+		return nil, err
 	}
+	url := parsed.String()
 
 	secret := strings.TrimSpace(req.Secret)
 	if secret == "" {
@@ -62,8 +91,7 @@ func (s *WebhookService) Create(req models.CreateWebhookRequest, username string
 	}
 
 	query := `INSERT INTO webhooks (id, user_id, url, secret, events, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := s.db.Exec(query, wh.ID, wh.UserID, wh.URL, wh.Secret, wh.Events, 1, wh.CreatedAt)
-	if err != nil {
+	if _, err := s.db.Exec(query, wh.ID, wh.UserID, wh.URL, wh.Secret, wh.Events, 1, wh.CreatedAt); err != nil {
 		return nil, fmt.Errorf("failed to save webhook: %w", err)
 	}
 
@@ -163,6 +191,13 @@ func (s *WebhookService) Dispatch(event string, data interface{}, userID string)
 }
 
 func (s *WebhookService) deliverWebhook(targetURL, secret, event string, body []byte) {
+	// Validated AGAIN, on purpose. What was public when it was stored can point
+	// somewhere private now; checking only at creation leaves DNS rebinding open.
+	if _, err := s.validateTarget(targetURL); err != nil {
+		log.Printf("[WEBHOOK] Refusing delivery for event %s: %v", event, err)
+		return
+	}
+
 	signature := computeHMACSHA256(body, secret)
 
 	for attempt := 1; attempt <= 3; attempt++ {

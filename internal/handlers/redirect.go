@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/web"
 	"github.com/go-chi/chi/v5"
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
-	"github.com/kaicorplabs/linkup/internal/web"
 )
 
 type RedirectHandler struct {

@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 func TestCleanerStripping(t *testing.T) {

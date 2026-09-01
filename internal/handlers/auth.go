@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 type AuthHandler struct {

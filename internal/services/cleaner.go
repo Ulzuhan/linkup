@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"sort"
 	"strings"
@@ -97,6 +98,17 @@ var knownTrackerParams = map[string]bool{
 }
 
 // CleanURL sanitizes an input URL by removing tracking query parameters and validating protocols.
+// allowPrivateTargets is process-wide policy, written once at startup and read
+// everywhere after. A parameter would be purer, but it would thread an operator
+// setting through six call sites that have no business knowing about it.
+var allowPrivateTargets bool
+
+// SetAllowPrivateTargets applies the operator's choice. Call it once, from main,
+// before serving. Default is false: reserved ranges are refused.
+func SetAllowPrivateTargets(allow bool) {
+	allowPrivateTargets = allow
+}
+
 func CleanURL(rawURL string, ownHost string) (cleanURL string, strippedParams []string, err error) {
 	trimmed := strings.TrimSpace(rawURL)
 	if trimmed == "" {
@@ -136,6 +148,17 @@ func CleanURL(rawURL string, ownHost string) (cleanURL string, strippedParams []
 			if host == cleanOwnHost {
 				return "", nil, fmt.Errorf("destination cannot point to LinkUp itself (prevents redirection loops)")
 			}
+		}
+	}
+
+	// Reserved ranges are refused unless the operator opted in. See
+	// LINKUP_ALLOW_PRIVATE_TARGETS in config for why this is a choice and not a
+	// constant.
+	if !allowPrivateTargets {
+		if literal := net.ParseIP(host); literal != nil && IsBlockedIP(literal) {
+			return "", nil, fmt.Errorf("destination %s is in a reserved range; "+
+				"set LINKUP_ALLOW_PRIVATE_TARGETS=true if this instance is meant to "+
+				"shorten intranet URLs", literal)
 		}
 	}
 

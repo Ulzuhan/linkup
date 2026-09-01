@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
 )
 
 func TestWebhookDispatchAndHMACSignature(t *testing.T) {
@@ -51,6 +51,10 @@ func TestWebhookDispatchAndHMACSignature(t *testing.T) {
 
 	cache := services.NewLinkCache(1000, 5*time.Minute)
 	webhookService := services.NewWebhookService(db)
+	// httptest always binds loopback, which the real destination check refuses
+	// on purpose. This test is about the signature and the dispatch, so it opts
+	// out explicitly; TestWebhookRefusesReservedTargets covers the check itself.
+	webhookService.AllowReservedTargetsForTesting()
 	linkService := services.NewLinkService(db, cache, webhookService, "link.kaicorplabs.com")
 
 	// 1. Register Webhook

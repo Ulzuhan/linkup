@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/web"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/services"
-	"github.com/kaicorplabs/linkup/internal/web"
 )
 
 func NewRouter(
@@ -59,6 +59,10 @@ func NewRouter(
 	webhookHandler := NewWebhookHandler(webhookService, authService, apiKeyService)
 	bulkHandler := NewBulkHandler(csvService, authService, apiKeyService)
 
+	// One bucket for every write path, form posts included: 60 writes a minute
+	// per identity is far above any human and far below a runaway script.
+	writeLimit := WriteRateLimit(services.NewTokenBucket(60, time.Minute), authService, apiKeyService)
+
 	// Auth routes
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/login", authHandler.Login)
@@ -69,16 +73,20 @@ func NewRouter(
 
 	// Web Dashboard
 	r.Get("/", dashboardHandler.Dashboard)
-	r.Post("/links/create", dashboardHandler.HandleCreateForm)
-
-	// Settings & Integrations
 	r.Get("/settings", settingsHandler.ShowSettings)
-	r.Post("/settings/keys", settingsHandler.CreateAPIKeyForm)
-	r.Post("/settings/domains", settingsHandler.CreateDomainForm)
-	r.Post("/settings/webhooks", settingsHandler.CreateWebhookForm)
+
+	// The form posts share the limiter with the API: same writes, same budget.
+	r.Group(func(r chi.Router) {
+		r.Use(writeLimit)
+		r.Post("/links/create", dashboardHandler.HandleCreateForm)
+		r.Post("/settings/keys", settingsHandler.CreateAPIKeyForm)
+		r.Post("/settings/domains", settingsHandler.CreateDomainForm)
+		r.Post("/settings/webhooks", settingsHandler.CreateWebhookForm)
+	})
 
 	// REST API routes
 	r.Route("/api", func(r chi.Router) {
+		r.Use(writeLimit)
 		r.Post("/clean-preview", apiHandler.CleanPreview)
 
 		// Links

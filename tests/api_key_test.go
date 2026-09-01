@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kaicorplabs/linkup/internal/config"
-	"github.com/kaicorplabs/linkup/internal/database"
-	"github.com/kaicorplabs/linkup/internal/handlers"
-	"github.com/kaicorplabs/linkup/internal/models"
-	"github.com/kaicorplabs/linkup/internal/services"
-	"github.com/kaicorplabs/linkup/internal/web"
+	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/handlers"
+	"github.com/Ulzuhan/linkup/internal/models"
+	"github.com/Ulzuhan/linkup/internal/services"
+	"github.com/Ulzuhan/linkup/internal/web"
 )
 
 func TestAPIKeyAuthentication(t *testing.T) {

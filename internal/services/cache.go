@@ -9,26 +9,26 @@ import (
 )
 
 type cacheEntry struct {
-	key       string
-	link      models.Link
-	cachedAt  time.Time
+	key      string
+	link     models.Link
+	cachedAt time.Time
 }
 
-// LinkCache is a thread-safe in-memory LRU cache for ultra-fast slug resolution.
+// LinkCache is a thread-safe in-memory LRU cache for ultra-fast multi-domain slug resolution.
 type LinkCache struct {
-	mu       sync.RWMutex
-	capacity int
-	items    map[string]*list.Element
+	mu        sync.RWMutex
+	capacity  int
+	items     map[string]*list.Element
 	evictList *list.List
-	ttl      time.Duration
+	ttl       time.Duration
 }
 
 func NewLinkCache(capacity int, ttl time.Duration) *LinkCache {
 	if capacity <= 0 {
-		capacity = 5000
+		capacity = 10000
 	}
 	if ttl <= 0 {
-		ttl = 5 * time.Minute
+		ttl = 15 * time.Minute
 	}
 	return &LinkCache{
 		capacity:  capacity,
@@ -38,14 +38,28 @@ func NewLinkCache(capacity int, ttl time.Duration) *LinkCache {
 	}
 }
 
-// Get retrieves a link from cache if present and unexpired.
-func (c *LinkCache) Get(slug string) (*models.Link, bool) {
+func FormatCacheKey(domain, slug string) string {
+	if domain == "" {
+		return slug
+	}
+	return domain + ":" + slug
+}
+
+// Get retrieves a link from cache by domain and slug.
+func (c *LinkCache) Get(domain, slug string) (*models.Link, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	elem, found := c.items[slug]
+	key := FormatCacheKey(domain, slug)
+	elem, found := c.items[key]
 	if !found {
-		return nil, false
+		// Fallback check for root domain
+		if domain != "" {
+			elem, found = c.items[slug]
+		}
+		if !found {
+			return nil, false
+		}
 	}
 
 	entry := elem.Value.(*cacheEntry)
@@ -59,21 +73,21 @@ func (c *LinkCache) Get(slug string) (*models.Link, bool) {
 	// Move to front (most recently used)
 	c.evictList.MoveToFront(elem)
 
-	// Return a copy to avoid race conditions
 	linkCopy := entry.link
 	return &linkCopy, true
 }
 
 // Set stores or updates a link in cache.
-func (c *LinkCache) Set(slug string, link *models.Link) {
+func (c *LinkCache) Set(domain, slug string, link *models.Link) {
 	if link == nil {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// If already in cache, update value and move to front
-	if elem, found := c.items[slug]; found {
+	key := FormatCacheKey(domain, slug)
+
+	if elem, found := c.items[key]; found {
 		c.evictList.MoveToFront(elem)
 		entry := elem.Value.(*cacheEntry)
 		entry.link = *link
@@ -81,25 +95,29 @@ func (c *LinkCache) Set(slug string, link *models.Link) {
 		return
 	}
 
-	// If at capacity, evict least recently used (back)
 	if c.evictList.Len() >= c.capacity {
 		c.evictOldest()
 	}
 
 	entry := &cacheEntry{
-		key:      slug,
+		key:      key,
 		link:     *link,
 		cachedAt: time.Now(),
 	}
 	elem := c.evictList.PushFront(entry)
-	c.items[slug] = elem
+	c.items[key] = elem
 }
 
 // Delete invalidates a slug in cache.
-func (c *LinkCache) Delete(slug string) {
+func (c *LinkCache) Delete(domain, slug string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	key := FormatCacheKey(domain, slug)
+	if elem, found := c.items[key]; found {
+		c.removeElement(elem)
+	}
+	// Also delete bare slug if present
 	if elem, found := c.items[slug]; found {
 		c.removeElement(elem)
 	}

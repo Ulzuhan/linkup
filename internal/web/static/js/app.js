@@ -1,10 +1,13 @@
-// LinkUp Client Application
+// LinkUp Client Application v2
 
 document.addEventListener('DOMContentLoaded', () => {
   setupLiveCleanerPreview();
   setupClipboardCopy();
   setupQRModal();
   setupDeleteHandlers();
+  setupFolderCreation();
+  setupSettingsHandlers();
+  setupBulkCSVUpload();
 });
 
 // Live tracker stripper inspection
@@ -68,7 +71,7 @@ function setupClipboardCopy() {
           btn.classList.remove('btn-primary');
         }, 2000);
       } catch (err) {
-        prompt('Copy this link:', textToCopy);
+        prompt('Copy this text:', textToCopy);
       }
     });
   });
@@ -78,7 +81,6 @@ function setupClipboardCopy() {
 function setupQRModal() {
   const modal = document.getElementById('qr-modal');
   const modalClose = document.getElementById('qr-modal-close');
-  const qrFrame = document.getElementById('qr-forge-frame');
   const qrLinkDirect = document.getElementById('qr-forge-direct');
   const qrLinkText = document.getElementById('qr-link-text');
 
@@ -93,7 +95,6 @@ function setupQRModal() {
       if (qrLinkDirect) qrLinkDirect.href = forgeUrl;
       if (qrLinkText) qrLinkText.textContent = linkUrl;
 
-      // Simple SVG QR preview via api or image
       const qrImg = document.getElementById('qr-image-preview');
       if (qrImg) {
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(linkUrl)}&color=06b6d4&bgcolor=141c2e`;
@@ -112,7 +113,7 @@ function setupQRModal() {
   });
 }
 
-// Delete link
+// Delete handlers
 function setupDeleteHandlers() {
   document.querySelectorAll('.delete-link-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -134,6 +135,99 @@ function setupDeleteHandlers() {
         alert('Network error while deleting link');
       }
     });
+  });
+}
+
+// Folder creation
+function setupFolderCreation() {
+  const addFolderBtn = document.getElementById('add-folder-btn');
+  if (!addFolderBtn) return;
+
+  addFolderBtn.addEventListener('click', async () => {
+    const name = prompt('Enter folder/project name:');
+    if (!name || !name.trim()) return;
+
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to create folder');
+      }
+    } catch (err) {
+      alert('Network error while creating folder');
+    }
+  });
+}
+
+// Settings Action Handlers
+function setupSettingsHandlers() {
+  // Delete API Key
+  document.querySelectorAll('.delete-api-key-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Are you sure you want to revoke this API key?')) return;
+      const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
+      if (res.ok) window.location.reload();
+    });
+  });
+
+  // Delete Domain
+  document.querySelectorAll('.delete-domain-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Are you sure you want to remove this custom domain?')) return;
+      const res = await fetch(`/api/domains/${id}`, { method: 'DELETE' });
+      if (res.ok) window.location.reload();
+    });
+  });
+
+  // Delete Webhook
+  document.querySelectorAll('.delete-webhook-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Are you sure you want to delete this webhook endpoint?')) return;
+      const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
+      if (res.ok) window.location.reload();
+    });
+  });
+}
+
+// Bulk CSV Upload
+function setupBulkCSVUpload() {
+  const input = document.getElementById('bulk-csv-upload');
+  const status = document.getElementById('bulk-csv-status');
+  if (!input || !status) return;
+
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    status.textContent = '⏳ Processing and cleaning URLs...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/links/bulk-import', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = `✓ Created ${data.total_created} links (${data.total_skipped} skipped).`;
+        setTimeout(() => window.location.href = '/', 1500);
+      } else {
+        status.textContent = `⚠ ${data.error || 'Upload failed'}`;
+      }
+    } catch (err) {
+      status.textContent = '⚠ Network error during upload.';
+    }
   });
 }
 

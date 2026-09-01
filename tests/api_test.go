@@ -39,17 +39,35 @@ func setupTestServer(t *testing.T) (http.Handler, *services.LinkService, *servic
 		SessionSecret: []byte("super-secret-key-32-bytes-long!"),
 		QRForgeURL:    "https://qr.kaicorplabs.com",
 		DevMode:       true,
+		AdminUsers:    map[string]bool{"admin": true},
 	}
 
 	cache := services.NewLinkCache(1000, 5*time.Minute)
-	linkService := services.NewLinkService(db, cache, cfg.PublicHost)
+	webhooks := services.NewWebhookService(db)
+	linkService := services.NewLinkService(db, cache, webhooks, cfg.PublicHost)
+	domainService := services.NewDomainService(db)
+	folderService := services.NewFolderService(db)
+	apiKeyService := services.NewAPIKeyService(db, cfg.IsAdmin)
+	csvService := services.NewCSVService(linkService)
+	routerEngine := services.NewRouterEngine()
 	authService := services.NewAuthService(cfg)
 	renderer, err := web.NewRenderer()
 	if err != nil {
 		t.Fatalf("failed to init renderer: %v", err)
 	}
 
-	router := handlers.NewRouter(cfg, linkService, authService, renderer)
+	router := handlers.NewRouter(
+		cfg,
+		linkService,
+		domainService,
+		folderService,
+		apiKeyService,
+		webhooks,
+		csvService,
+		routerEngine,
+		authService,
+		renderer,
+	)
 
 	cleanup := func() {
 		db.Close()

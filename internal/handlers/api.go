@@ -12,23 +12,53 @@ import (
 )
 
 type APIHandler struct {
-	cfg         *config.Config
-	linkService *services.LinkService
-	authService *services.AuthService
+	cfg           *config.Config
+	linkService   *services.LinkService
+	authService   *services.AuthService
+	apiKeyService *services.APIKeyService
 }
 
-func NewAPIHandler(cfg *config.Config, linkService *services.LinkService, authService *services.AuthService) *APIHandler {
+func NewAPIHandler(
+	cfg *config.Config,
+	linkService *services.LinkService,
+	authService *services.AuthService,
+	apiKeyService *services.APIKeyService,
+) *APIHandler {
 	return &APIHandler{
-		cfg:         cfg,
-		linkService: linkService,
-		authService: authService,
+		cfg:           cfg,
+		linkService:   linkService,
+		authService:   authService,
+		apiKeyService: apiKeyService,
 	}
+}
+
+// Helper to authenticate request via Bearer API key or OIDC session
+func getAuthSession(r *http.Request, authService *services.AuthService, apiKeyService *services.APIKeyService) *models.UserSession {
+	// 1. Check Bearer token
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if apiKeyService != nil {
+			if session, err := apiKeyService.ValidateKey(token); err == nil && session != nil {
+				return session
+			}
+		}
+	}
+
+	// 2. Check Cookie Session
+	if authService != nil {
+		if session, err := authService.GetSession(r); err == nil && session != nil {
+			return session
+		}
+	}
+
+	return nil
 }
 
 // CreateLink handles POST /api/links
 func (h *APIHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
-	session, err := h.authService.GetSession(r)
-	if err != nil || session == nil {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
@@ -45,7 +75,12 @@ func (h *APIHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := "https://" + h.cfg.DefaultDomain + "/" + link.Slug
+	domainHost := h.cfg.DefaultDomain
+	if link.Domain != "" {
+		domainHost = link.Domain
+	}
+	shortURL := "https://" + domainHost + "/" + link.Slug
+
 	sendJSON(w, http.StatusCreated, map[string]interface{}{
 		"link":            link,
 		"short_url":       shortURL,
@@ -55,8 +90,8 @@ func (h *APIHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 
 // ListLinks handles GET /api/links
 func (h *APIHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
-	session, err := h.authService.GetSession(r)
-	if err != nil || session == nil {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
@@ -75,8 +110,8 @@ func (h *APIHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
 
 // GetLink handles GET /api/links/{id}
 func (h *APIHandler) GetLink(w http.ResponseWriter, r *http.Request) {
-	session, err := h.authService.GetSession(r)
-	if err != nil || session == nil {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
@@ -98,8 +133,8 @@ func (h *APIHandler) GetLink(w http.ResponseWriter, r *http.Request) {
 
 // UpdateLink handles PATCH /api/links/{id}
 func (h *APIHandler) UpdateLink(w http.ResponseWriter, r *http.Request) {
-	session, err := h.authService.GetSession(r)
-	if err != nil || session == nil {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
@@ -122,8 +157,8 @@ func (h *APIHandler) UpdateLink(w http.ResponseWriter, r *http.Request) {
 
 // DeleteLink handles DELETE /api/links/{id}
 func (h *APIHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
-	session, err := h.authService.GetSession(r)
-	if err != nil || session == nil {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}

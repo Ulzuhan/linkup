@@ -15,6 +15,12 @@ import (
 func NewRouter(
 	cfg *config.Config,
 	linkService *services.LinkService,
+	domainService *services.DomainService,
+	folderService *services.FolderService,
+	apiKeyService *services.APIKeyService,
+	webhookService *services.WebhookService,
+	csvService *services.CSVService,
+	routerEngine *services.RouterEngine,
 	authService *services.AuthService,
 	renderer *web.Renderer,
 ) *chi.Mux {
@@ -42,10 +48,16 @@ func NewRouter(
 
 	// Handlers
 	authHandler := NewAuthHandler(cfg, authService)
-	dashboardHandler := NewDashboardHandler(cfg, linkService, authService, renderer)
-	redirectHandler := NewRedirectHandler(cfg, linkService, renderer)
+	dashboardHandler := NewDashboardHandler(cfg, linkService, domainService, folderService, authService, renderer)
+	settingsHandler := NewSettingsHandler(cfg, authService, apiKeyService, domainService, webhookService, renderer)
+	redirectHandler := NewRedirectHandler(cfg, linkService, routerEngine, renderer)
 	pinHandler := NewPinHandler(cfg, linkService, renderer)
-	apiHandler := NewAPIHandler(cfg, linkService, authService)
+	apiHandler := NewAPIHandler(cfg, linkService, authService, apiKeyService)
+	domainHandler := NewDomainHandler(domainService, authService, apiKeyService)
+	folderHandler := NewFolderHandler(folderService, authService, apiKeyService)
+	apiKeyHandler := NewAPIKeyHandler(apiKeyService, authService)
+	webhookHandler := NewWebhookHandler(webhookService, authService, apiKeyService)
+	bulkHandler := NewBulkHandler(csvService, authService, apiKeyService)
 
 	// Auth routes
 	r.Route("/auth", func(r chi.Router) {
@@ -59,14 +71,46 @@ func NewRouter(
 	r.Get("/", dashboardHandler.Dashboard)
 	r.Post("/links/create", dashboardHandler.HandleCreateForm)
 
-	// API routes
+	// Settings & Integrations
+	r.Get("/settings", settingsHandler.ShowSettings)
+	r.Post("/settings/keys", settingsHandler.CreateAPIKeyForm)
+	r.Post("/settings/domains", settingsHandler.CreateDomainForm)
+	r.Post("/settings/webhooks", settingsHandler.CreateWebhookForm)
+
+	// REST API routes
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/clean-preview", apiHandler.CleanPreview)
+
+		// Links
 		r.Get("/links", apiHandler.ListLinks)
 		r.Post("/links", apiHandler.CreateLink)
 		r.Get("/links/{id}", apiHandler.GetLink)
 		r.Patch("/links/{id}", apiHandler.UpdateLink)
 		r.Delete("/links/{id}", apiHandler.DeleteLink)
+
+		// Bulk CSV
+		r.Post("/links/bulk-import", bulkHandler.BulkImport)
+		r.Get("/links/export", bulkHandler.ExportCSV)
+
+		// Domains
+		r.Get("/domains", domainHandler.List)
+		r.Post("/domains", domainHandler.Create)
+		r.Delete("/domains/{id}", domainHandler.Delete)
+
+		// Folders
+		r.Get("/folders", folderHandler.List)
+		r.Post("/folders", folderHandler.Create)
+		r.Delete("/folders/{id}", folderHandler.Delete)
+
+		// API Keys
+		r.Get("/keys", apiKeyHandler.List)
+		r.Post("/keys", apiKeyHandler.Create)
+		r.Delete("/keys/{id}", apiKeyHandler.Delete)
+
+		// Webhooks
+		r.Get("/webhooks", webhookHandler.List)
+		r.Post("/webhooks", webhookHandler.Create)
+		r.Delete("/webhooks/{id}", webhookHandler.Delete)
 	})
 
 	// PIN verification
@@ -90,7 +134,6 @@ func PrivacyRespectingLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(ww, r)
 
-		// Omit static assets from noisy logs
 		if r.URL.Path == "/healthz" || r.URL.Path == "/health" {
 			return
 		}

@@ -11,13 +11,13 @@
       <span class="stat-value" style="color: var(--accent-cyan);">{{.TotalClicks}}</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Privacy Shield</span>
-      <span class="stat-value" style="color: var(--accent-emerald); font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-        🛡️ Active & Striping
+      <span class="stat-label">Smart Routing</span>
+      <span class="stat-value" style="color: var(--accent-indigo); font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+        ⚡ Device / Locale / A-B
       </span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Public Domain</span>
+      <span class="stat-label">Default Domain</span>
       <span class="stat-value mono" style="font-size: 1.1rem; color: var(--text-secondary); margin-top: 0.25rem;">
         {{.DefaultDomain}}
       </span>
@@ -45,7 +45,7 @@
 
     <form method="POST" action="/links/create" id="create-link-form">
       <div class="form-group">
-        <label for="target-url-input" class="form-label">Destination URL</label>
+        <label for="target-url-input" class="form-label">Default Destination URL</label>
         <input 
           type="text" 
           id="target-url-input" 
@@ -71,10 +71,22 @@
       <!-- Advanced Options Accordion -->
       <details style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
         <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); user-select: none;">
-          ⚙️ Advanced Security & Expiration Options (Custom Slug, PIN, TTL, Click Budget)
+          ⚙️ Advanced Security, Multi-Domain & Smart Routing Options
         </summary>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          {{if .CustomDomains}}
+            <div class="form-group">
+              <label class="form-label">Domain</label>
+              <select name="domain" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
+                <option value="">{{.DefaultDomain}} (Default)</option>
+                {{range .CustomDomains}}
+                  <option value="{{.Domain}}">{{.Domain}}</option>
+                {{end}}
+              </select>
+            </div>
+          {{end}}
+
           <div class="form-group">
             <label class="form-label">Custom Slug (Optional)</label>
             <div style="display: flex; align-items: center;">
@@ -86,6 +98,23 @@
           <div class="form-group">
             <label class="form-label">Title / Label (Optional)</label>
             <input type="text" name="title" class="form-input" placeholder="e.g. Q4 Roadmap Doc">
+          </div>
+
+          {{if .Folders}}
+            <div class="form-group">
+              <label class="form-label">Folder / Project</label>
+              <select name="folder_id" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
+                <option value="">No Folder (General)</option>
+                {{range .Folders}}
+                  <option value="{{.ID}}">📁 {{.Name}}</option>
+                {{end}}
+              </select>
+            </div>
+          {{end}}
+
+          <div class="form-group">
+            <label class="form-label">Tags (comma-separated)</label>
+            <input type="text" name="tags" class="form-input" placeholder="marketing, launch, docs">
           </div>
 
           <div class="form-group">
@@ -111,12 +140,49 @@
             </select>
           </div>
         </div>
+
+        <!-- Smart Conditional Routing Inputs -->
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0;">
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-indigo);">📱 Device Conditional Routing</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label">iOS / App Store Target URL</label>
+            <input type="url" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id...">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label">Android / Play Store Target URL</label>
+            <input type="url" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=...">
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-cyan);">⚖️ A/B Split Testing (Traffic Distribution)</h4>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 0.5rem;">
+          <input type="url" name="ab_url_a" class="form-input mono" placeholder="Variant A URL (e.g. Landing Page 1)">
+          <input type="number" name="ab_weight_a" class="form-input" placeholder="Weight % (e.g. 50)" min="1" max="99">
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+          <input type="url" name="ab_url_b" class="form-input mono" placeholder="Variant B URL (e.g. Landing Page 2)">
+          <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Remaining % will route to Variant B</span>
+        </div>
       </details>
 
       <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
         Generate Sovereign Clean Link
       </button>
     </form>
+  </div>
+
+  <!-- Folder Tabs / Filter Bar -->
+  <div style="display: flex; gap: 0.5rem; align-items: center; overflow-x: auto; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+    <a href="/" class="btn {{if not .CurrentFolder}}btn-primary{{else}}btn-secondary{{end}} btn-sm">
+      All Links
+    </a>
+    {{range .Folders}}
+      <a href="/?folder={{.ID}}" class="btn {{if eq $.CurrentFolder .ID}}btn-primary{{else}}btn-secondary{{end}} btn-sm" style="border-left: 3px solid {{.Color}};">
+        📁 {{.Name}}
+      </a>
+    {{end}}
+    <button id="add-folder-btn" class="btn btn-secondary btn-sm">+ New Folder</button>
   </div>
 
   <!-- Links Table -->
@@ -132,7 +198,7 @@
           <thead>
             <tr>
               <th>Slug & Title</th>
-              <th>Clean Destination</th>
+              <th>Clean Destination & Smart Rules</th>
               <th>Status</th>
               <th>Clicks</th>
               <th style="text-align: right;">Actions</th>
@@ -145,22 +211,40 @@
                   <div style="display: flex; flex-direction: column; gap: 0.2rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem;">
                       <a href="/{{.Slug}}" target="_blank" class="mono" style="font-weight: 600; color: var(--accent-cyan); text-decoration: none;">
-                        /{{.Slug}}
+                        {{if .Domain}}{{.Domain}}/{{.Slug}}{{else}}/{{.Slug}}{{end}}
                       </a>
                       {{if .HasPIN}}
                         <span title="Password Protected" style="font-size: 0.8rem;">🔒</span>
                       {{end}}
                     </div>
                     <span style="font-size: 0.8rem; color: var(--text-muted);">{{.Title}}</span>
+                    
+                    {{if .Tags}}
+                      <div style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                        {{range .Tags}}
+                          <span style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 0.1rem 0.4rem; border-radius: 0.25rem;">#{{.}}</span>
+                        {{end}}
+                      </div>
+                    {{end}}
                   </div>
                 </td>
-                <td style="max-width: 350px;">
+                <td style="max-width: 320px;">
                   <div class="mono" style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{.TargetURL}}">
                     {{.TargetURL}}
                   </div>
-                  {{if .ExpiresAt}}
-                    <div style="font-size: 0.75rem; color: var(--accent-amber); margin-top: 0.2rem;">
-                      ⏳ Expire scheduled
+                  {{if .IOSURL}}
+                    <div style="font-size: 0.75rem; color: var(--accent-indigo); margin-top: 0.15rem;">
+                      🍏 iOS Target Configured
+                    </div>
+                  {{end}}
+                  {{if .AndroidURL}}
+                    <div style="font-size: 0.75rem; color: var(--accent-emerald); margin-top: 0.15rem;">
+                      🤖 Android Target Configured
+                    </div>
+                  {{end}}
+                  {{if .ABVariants}}
+                    <div style="font-size: 0.75rem; color: var(--accent-cyan); margin-top: 0.15rem;">
+                      ⚖️ A/B Test Active ({{len .ABVariants}} variants)
                     </div>
                   {{end}}
                 </td>
@@ -183,7 +267,7 @@
                   <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
                     <button 
                       class="btn btn-secondary btn-sm copy-btn" 
-                      data-copy="{{$.DefaultDomain}}/{{.Slug}}" 
+                      data-copy="{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
                       title="Copy Link to Clipboard"
                     >
                       📋 Copy
@@ -198,7 +282,7 @@
                     </a>
                     <button 
                       class="btn btn-secondary btn-sm qr-btn" 
-                      data-url="https://{{$.DefaultDomain}}/{{.Slug}}" 
+                      data-url="https://{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
                       data-qrforge="{{$.QRForgeURL}}"
                       title="Generate QR via QR-Forge"
                     >

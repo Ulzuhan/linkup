@@ -1,0 +1,217 @@
+{{define "content"}}
+<div class="container" style="max-width: 960px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+      <h1 style="font-size: 1.75rem;">⚙️ Settings & Integrations</h1>
+      <p style="color: var(--text-secondary); font-size: 0.9rem;">
+        Manage programmatic API keys, custom branded domains, and real-time webhook automations.
+      </p>
+    </div>
+    <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+  </div>
+
+  {{if .FlashSuccess}}
+    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+      ✓ {{.FlashSuccess}}
+    </div>
+  {{end}}
+
+  {{if .FlashError}}
+    <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+      ⚠ {{.FlashError}}
+    </div>
+  {{end}}
+
+  {{if .NewAPIKey}}
+    <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem;">
+      <h3 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">🔑 New API Key Generated</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+        Copy this key now. For your security, this is the only time it will ever be displayed in plain text.
+      </p>
+      <div style="display: flex; gap: 0.75rem;">
+        <input type="text" readonly value="{{.NewAPIKey}}" class="form-input mono" style="background: var(--bg-primary); color: #67e8f9; font-weight: 600;">
+        <button class="btn btn-primary copy-btn" data-copy="{{.NewAPIKey}}">📋 Copy Key</button>
+      </div>
+    </div>
+  {{end}}
+
+  <!-- API Keys Section -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h2 style="font-size: 1.25rem;">Programmatic API Keys</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Use Bearer tokens to create links from scripts, Raycast, CLI or bots.</p>
+      </div>
+    </div>
+
+    <form method="POST" action="/settings/keys" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <input type="text" name="name" placeholder="Key name (e.g. Raycast, Telegram Bot, CI)" class="form-input" required style="flex: 1;">
+      <button type="submit" class="btn btn-primary">Generate API Key</button>
+    </form>
+
+    {{if .APIKeys}}
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Name & Prefix</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .APIKeys}}
+              <tr>
+                <td>
+                  <strong>{{.Name}}</strong>
+                  <div class="mono" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{.KeyPrefix}}</div>
+                </td>
+                <td style="color: var(--text-secondary); font-size: 0.8rem;">
+                  {{.CreatedAt}}
+                </td>
+                <td style="color: var(--text-secondary); font-size: 0.8rem;">
+                  {{if .LastUsedAt}}{{.LastUsedAt}}{{else}}<span style="color: var(--text-muted);">Never</span>{{end}}
+                </td>
+                <td style="text-align: right;">
+                  <button class="btn btn-danger btn-sm delete-api-key-btn" data-id="{{.ID}}">Revoke</button>
+                </td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No active API keys yet.</p>
+    {{end}}
+  </div>
+
+  <!-- Custom Domains Section -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <div>
+        <h2 style="font-size: 1.25rem;">Custom Branded Domains</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Route short links through your own domains (e.g. <code>go.mycompany.com</code>).</p>
+      </div>
+    </div>
+
+    <form method="POST" action="/settings/domains" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <input type="text" name="domain" placeholder="go.example.com" class="form-input mono" required style="flex: 1;">
+      <button type="submit" class="btn btn-primary">Add Custom Domain</button>
+    </form>
+
+    {{if .CustomDomains}}
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Domain</th>
+              <th>Status</th>
+              <th>Added</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .CustomDomains}}
+              <tr>
+                <td class="mono" style="font-weight: 600; color: var(--accent-cyan);">{{.Domain}}</td>
+                <td><span class="status-pill status-active">✓ Verified</span></td>
+                <td style="color: var(--text-secondary); font-size: 0.8rem;">{{.CreatedAt}}</td>
+                <td style="text-align: right;">
+                  <button class="btn btn-danger btn-sm delete-domain-btn" data-id="{{.ID}}">Remove</button>
+                </td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No custom domains configured. Using default: <code class="mono">{{.DefaultDomain}}</code></p>
+    {{end}}
+  </div>
+
+  <!-- Real-time Webhooks Section -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.25rem;">Real-time Webhooks</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">Receive instantaneous HMAC-signed HTTP POST alerts on link lifecycle events.</p>
+    </div>
+
+    <form method="POST" action="/settings/webhooks" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Endpoint URL</label>
+        <input type="url" name="url" placeholder="https://api.example.com/webhooks/linkup" class="form-input mono" required>
+      </div>
+
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Secret Key (Optional - auto-generated if empty)</label>
+        <input type="text" name="secret" placeholder="Leave empty for auto-generated signing secret" class="form-input mono">
+      </div>
+
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-secondary);">
+        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+          <input type="checkbox" name="events" value="link.created" checked>
+          <span>link.created</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+          <input type="checkbox" name="events" value="link.expired_ttl" checked>
+          <span>link.expired_ttl</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+          <input type="checkbox" name="events" value="link.self_destructed" checked>
+          <span>link.self_destructed</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Register Webhook</button>
+    </form>
+
+    {{if .Webhooks}}
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Target URL</th>
+              <th>Subscribed Events</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Webhooks}}
+              <tr>
+                <td class="mono" style="font-size: 0.85rem; color: var(--text-primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{.URL}}</td>
+                <td style="font-size: 0.8rem; color: var(--accent-indigo);">{{.Events}}</td>
+                <td><span class="status-pill status-active">Active</span></td>
+                <td style="text-align: right;">
+                  <button class="btn btn-danger btn-sm delete-webhook-btn" data-id="{{.ID}}">Delete</button>
+                </td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No webhooks registered.</p>
+    {{end}}
+  </div>
+
+  <!-- Bulk CSV Data Operations -->
+  <div class="card">
+    <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Data Export & Bulk CSV</h2>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Export your catalog or upload a batch CSV of URLs to shorten at once.</p>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+      <a href="/api/links/export" class="btn btn-secondary">
+        📥 Download All Links as CSV
+      </a>
+
+      <label class="btn btn-primary" style="cursor: pointer;">
+        📤 Bulk Import CSV
+        <input type="file" id="bulk-csv-upload" accept=".csv" style="display: none;">
+      </label>
+      <span id="bulk-csv-status" style="font-size: 0.85rem; color: var(--accent-cyan);"></span>
+    </div>
+  </div>
+</div>
+{{end}}

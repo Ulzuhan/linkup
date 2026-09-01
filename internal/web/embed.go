@@ -19,7 +19,7 @@ type Renderer struct {
 func NewRenderer() (*Renderer, error) {
 	templates := make(map[string]*template.Template)
 
-	pages := []string{"dashboard.html", "preview.html", "pin.html", "error.html"}
+	pages := []string{"dashboard.html", "preview.html", "pin.html", "error.html", "settings.html"}
 	for _, page := range pages {
 		tmpl, err := template.ParseFS(EmbeddedFS, "templates/layout.html", "templates/"+page)
 		if err != nil {

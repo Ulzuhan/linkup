@@ -24,7 +24,8 @@ func setupTestDB(t *testing.T) (*database.DB, *services.LinkCache, *services.Lin
 	}
 
 	cache := services.NewLinkCache(1000, 5*time.Minute)
-	linkService := services.NewLinkService(db, cache, "link.kaicorplabs.com")
+	webhooks := services.NewWebhookService(db)
+	linkService := services.NewLinkService(db, cache, webhooks, "link.kaicorplabs.com")
 
 	cleanup := func() {
 		db.Close()
@@ -63,7 +64,7 @@ func TestLinkCreationAndResolution(t *testing.T) {
 	}
 
 	// 2. Resolve link (should hit LRU cache)
-	resolved, err := linkService.Resolve("hn-post")
+	resolved, err := linkService.Resolve("", "hn-post")
 	if err != nil {
 		t.Fatalf("failed to resolve link: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestLinkCreationAndResolution(t *testing.T) {
 	}
 
 	// 3. Verify Cache Hit
-	cached, ok := cache.Get("hn-post")
+	cached, ok := cache.Get("", "hn-post")
 	if !ok || cached == nil {
 		t.Errorf("expected link in cache, but was not found")
 	}
@@ -95,7 +96,7 @@ func TestLinkExpirationByTime(t *testing.T) {
 	}
 
 	// Attempt to resolve
-	resolved, err := linkService.Resolve("time-expired")
+	resolved, err := linkService.Resolve("", "time-expired")
 	if err == nil {
 		t.Errorf("expected error for expired link, but got nil")
 	}
@@ -121,15 +122,15 @@ func TestLinkSelfDestructByClickBudget(t *testing.T) {
 	}
 
 	// 1st click
-	linkService.RecordClick(link.ID, link.Slug)
+	linkService.RecordClick(link.ID, link.Domain, link.Slug, "")
 	time.Sleep(50 * time.Millisecond) // wait for async click update
 
 	// 2nd click
-	linkService.RecordClick(link.ID, link.Slug)
+	linkService.RecordClick(link.ID, link.Domain, link.Slug, "")
 	time.Sleep(50 * time.Millisecond)
 
 	// Now resolving should fail as budget is reached
-	resolved, err := linkService.Resolve("self-destruct")
+	resolved, err := linkService.Resolve("", "self-destruct")
 	if err == nil && !resolved.IsExpired() {
 		t.Errorf("expected link to be expired after reaching max clicks")
 	}
@@ -174,7 +175,8 @@ func BenchmarkLRUResolution(b *testing.B) {
 	defer db.Close()
 
 	cache := services.NewLinkCache(5000, 10*time.Minute)
-	linkService := services.NewLinkService(db, cache, "link.kaicorplabs.com")
+	webhooks := services.NewWebhookService(db)
+	linkService := services.NewLinkService(db, cache, webhooks, "link.kaicorplabs.com")
 
 	req := models.CreateLinkRequest{
 		URL:        "https://example.com/fast",
@@ -184,6 +186,6 @@ func BenchmarkLRUResolution(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = linkService.Resolve("bench-link")
+		_, _ = linkService.Resolve("", "bench-link")
 	}
 }

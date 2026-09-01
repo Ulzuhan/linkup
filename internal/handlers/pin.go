@@ -32,7 +32,8 @@ func (h *PinHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link, err := h.linkService.GetBySlugRaw(slug)
+	domain := extractDomain(r.Host, h.cfg.PublicHost, h.cfg.DefaultDomain)
+	link, err := h.linkService.GetBySlugRaw(domain, slug)
 	if err != nil || link == nil {
 		http.NotFound(w, r)
 		return
@@ -65,7 +66,8 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link, err := h.linkService.GetBySlugRaw(slug)
+	domain := extractDomain(r.Host, h.cfg.PublicHost, h.cfg.DefaultDomain)
+	link, err := h.linkService.GetBySlugRaw(domain, slug)
 	if err != nil || link == nil {
 		http.NotFound(w, r)
 		return
@@ -98,7 +100,7 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Valid PIN! Record click and redirect
-	h.linkService.RecordClick(link.ID, slug)
+	h.linkService.RecordClick(link.ID, link.Domain, slug, "")
 
 	redirectCode := link.RedirectType
 	if redirectCode != 301 && redirectCode != 302 {
@@ -107,4 +109,13 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	http.Redirect(w, r, link.TargetURL, redirectCode)
+}
+
+func extractDomain(hostHeader, publicHost, defaultDomain string) string {
+	host := strings.ToLower(hostHeader)
+	host = strings.Split(host, ":")[0]
+	if host != "localhost" && host != "127.0.0.1" && host != publicHost && host != defaultDomain {
+		return host
+	}
+	return ""
 }

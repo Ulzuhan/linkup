@@ -4,7 +4,7 @@
 static binary, no telemetry.
 
 [![CI](https://github.com/Ulzuhan/linkup/actions/workflows/ci.yml/badge.svg)](https://github.com/Ulzuhan/linkup/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/go-1.24%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Most shorteners are surveillance with a convenience feature attached: they log
@@ -92,7 +92,7 @@ full, including the reasons that do not hold.
   └──────────────┘     └──────────────┘
 ```
 
-- **Backend:** Go 1.24 with `chi`, no CGO.
+- **Backend:** Go 1.25 with `chi`, no CGO.
 - **Storage:** SQLite in WAL mode, pure-Go driver.
 - **Dashboard:** server-rendered templates embedded in the binary with
   `embed.FS`. There is no separate frontend to deploy.

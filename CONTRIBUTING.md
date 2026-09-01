@@ -2,7 +2,7 @@
 
 ## Getting it running
 
-Go 1.24 or newer. No CGO, no system libraries — the SQLite driver is pure Go.
+Go 1.25 or newer. No CGO, no system libraries — the SQLite driver is pure Go.
 
 ```bash
 cp .env.example .env          # then set LINKUP_SESSION_SECRET

@@ -1,0 +1,35 @@
+name: Bug report
+description: Something behaves differently from what it says it does
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything with security impact, please do **not** open an issue —
+        use a [private advisory](https://github.com/Ulzuhan/linkup/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The shortest sequence that shows it. A curl command beats a paragraph.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag, or commit if you built from source.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: Environment variables with the secrets removed.

@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose something LinkUp should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you unable to do today? Describe the situation, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      description: >
+        LinkUp never reads a visitor's address, User-Agent or referrer into
+        storage. Proposals that need per-visitor state need a different design.
+      options:
+        - label: This does not require identifying or profiling visitors.
+          required: true

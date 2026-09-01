@@ -114,11 +114,17 @@ type CleanPreviewResult struct {
 }
 
 type UserSession struct {
-	UserID    string `json:"user_id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	IsAdmin   bool   `json:"is_admin"`
-	CreatedAt int64  `json:"created_at"`
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	// Groups as the provider stated them at sign-in. Kept so administration can
+	// be re-evaluated on every request without another round trip. The session
+	// cookie is AES-GCM sealed, so this cannot be edited by its holder; what it
+	// does mean is that a group change takes effect at next sign-in, which is
+	// the usual trade of any self-contained session.
+	Groups    []string `json:"groups,omitempty"`
+	IsAdmin   bool     `json:"is_admin"`
+	CreatedAt int64    `json:"created_at"`
 }
 
 type BlockedDomain struct {

@@ -44,7 +44,13 @@ func main() {
 	linkService := services.NewLinkService(db, cache, webhookService, cfg.PublicHost)
 	domainService := services.NewDomainService(db)
 	folderService := services.NewFolderService(db)
-	apiKeyService := services.NewAPIKeyService(db, cfg.IsAdmin)
+	// An API key carries no groups, so with group-based administration this is
+	// always false: automation does not administer. That is deliberate — a
+	// leaked key should not be able to purge domains — and it is why the
+	// username fallback is passed with no groups rather than not passed at all.
+	apiKeyService := services.NewAPIKeyService(db, func(username string) bool {
+		return cfg.IsAdmin(username, nil)
+	})
 	csvService := services.NewCSVService(linkService)
 	routerEngine := services.NewRouterEngine()
 	authService := services.NewAuthService(cfg)

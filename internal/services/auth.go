@@ -52,7 +52,7 @@ func NewAuthService(cfg *config.Config) *AuthService {
 				ClientSecret: cfg.OIDCClientSecret,
 				RedirectURL:  cfg.OIDCRedirectURI,
 				Endpoint:     provider.Endpoint(),
-				Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
+				Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"},
 			}
 			log.Printf("[AUTH] OIDC provider configured successfully for %s", cfg.OIDCIssuerURL)
 		}
@@ -139,10 +139,11 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 	}
 
 	var claims struct {
-		Subject           string `json:"sub"`
-		PreferredUsername string `json:"preferred_username"`
-		Email             string `json:"email"`
-		Name              string `json:"name"`
+		Subject           string   `json:"sub"`
+		PreferredUsername string   `json:"preferred_username"`
+		Email             string   `json:"email"`
+		Name              string   `json:"name"`
+		Groups            []string `json:"groups"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		return nil, fmt.Errorf("failed to parse token claims: %w", err)
@@ -156,12 +157,13 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 		username = claims.Subject
 	}
 
-	isAdmin := a.cfg.IsAdmin(username) || (a.cfg.DevMode && username == "dev-user")
+	isAdmin := a.cfg.IsAdmin(username, claims.Groups) || (a.cfg.DevMode && username == "dev-user")
 
 	return &models.UserSession{
 		UserID:    claims.Subject,
 		Username:  username,
 		Email:     claims.Email,
+		Groups:    claims.Groups,
 		IsAdmin:   isAdmin,
 		CreatedAt: time.Now().Unix(),
 	}, nil
@@ -241,8 +243,10 @@ func (a *AuthService) GetSession(r *http.Request) (*models.UserSession, error) {
 		return nil, err
 	}
 
-	// Dynamic admin check in case list changed
-	session.IsAdmin = a.cfg.IsAdmin(session.Username) || (a.cfg.DevMode && session.Username == "dev-user")
+	// Re-evaluated on every read so a change of policy —which group administers—
+	// takes effect without waiting for sessions to expire.
+	session.IsAdmin = a.cfg.IsAdmin(session.Username, session.Groups) ||
+		(a.cfg.DevMode && session.Username == "dev-user")
 
 	return &session, nil
 }

@@ -43,7 +43,7 @@ func TestAPIKeyAuthentication(t *testing.T) {
 	linkService := services.NewLinkService(db, cache, webhooks, cfg.PublicHost)
 	domainService := services.NewDomainService(db)
 	folderService := services.NewFolderService(db)
-	apiKeyService := services.NewAPIKeyService(db, cfg.IsAdmin)
+	apiKeyService := services.NewAPIKeyService(db, func(u string) bool { return cfg.IsAdmin(u, nil) })
 	csvService := services.NewCSVService(linkService)
 	routerEngine := services.NewRouterEngine()
 	authService := services.NewAuthService(cfg)

@@ -24,6 +24,7 @@ type Config struct {
 	DBPath              string
 	QRForgeURL          string
 	AdminUsers          map[string]bool
+	AdminGroup          string
 	DevMode             bool
 	AllowPrivateTargets bool
 }
@@ -72,7 +73,16 @@ func Load() *Config {
 	enrollURL := getEnv("LINKUP_ENROLL_URL", "")
 	accountURL := getEnv("LINKUP_ACCOUNT_URL", "")
 
-	// Admin users
+	// Who administers, decided by the identity provider.
+	//
+	// A group beats a list of usernames for one reason that matters in
+	// practice: revoking becomes removing someone from a group, not editing a
+	// file and restarting the service. LINKUP_ADMIN_USERS stays as a fallback
+	// for deployments whose provider does not emit groups, and it is checked
+	// only when no group is configured.
+	adminGroup := getEnv("LINKUP_ADMIN_GROUP", "")
+
+	// Admin users (fallback)
 	adminUsersMap := make(map[string]bool)
 	adminUsersStr := getEnv("LINKUP_ADMIN_USERS", "")
 	if adminUsersStr != "" {
@@ -99,6 +109,7 @@ func Load() *Config {
 		DBPath:              dbPath,
 		QRForgeURL:          strings.TrimRight(qrForgeURL, "/"),
 		AdminUsers:          adminUsersMap,
+		AdminGroup:          adminGroup,
 		DevMode:             devMode,
 		AllowPrivateTargets: allowPrivateTargets,
 	}
@@ -143,7 +154,19 @@ func (c *Config) IsOIDCConfigured() bool {
 	return c.OIDCIssuerURL != "" && c.OIDCClientID != ""
 }
 
-func (c *Config) IsAdmin(username string) bool {
+// IsAdmin resolves administration from the provider's groups when a group is
+// configured, and only otherwise from the username fallback. The two are never
+// combined: mixing them would mean removing someone from the group did not
+// actually remove them, which is exactly the failure a group is meant to avoid.
+func (c *Config) IsAdmin(username string, groups []string) bool {
+	if c.AdminGroup != "" {
+		for _, g := range groups {
+			if strings.EqualFold(strings.TrimSpace(g), c.AdminGroup) {
+				return true
+			}
+		}
+		return false
+	}
 	if len(c.AdminUsers) == 0 {
 		return false
 	}

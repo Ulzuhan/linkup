@@ -52,7 +52,12 @@ func NewAuthService(cfg *config.Config) *AuthService {
 				ClientSecret: cfg.OIDCClientSecret,
 				RedirectURL:  cfg.OIDCRedirectURI,
 				Endpoint:     provider.Endpoint(),
-				Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"},
+				// No "groups" scope is requested on purpose. Providers carry group
+				// membership inside the profile claim set —Authentik's default
+				// profile mapping emits it— and asking for a scope the provider
+				// does not define is answered with invalid_scope, which fails the
+				// whole sign-in for a claim we were already getting.
+				Scopes: []string{oidc.ScopeOpenID, "profile", "email"},
 			}
 			log.Printf("[AUTH] OIDC provider configured successfully for %s", cfg.OIDCIssuerURL)
 		}

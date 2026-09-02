@@ -137,6 +137,7 @@ setup and the hardening the compose file already applies.
 | `LINKUP_OIDC_REDIRECT_URI` | Public callback URL | `http://localhost:3464/auth/callback` |
 | `LINKUP_ENROLL_URL` | Where someone without an account is sent | `""` |
 | `LINKUP_ACCOUNT_URL` | Where someone manages their account at the provider | `""` |
+| `LINKUP_OIDC_PROVIDER_NAME` | What the sign-in button calls your provider | `your provider` |
 | `LINKUP_ADMIN_GROUP` | Provider group whose members administer. Preferred | `""` |
 | `LINKUP_ADMIN_USERS` | Username fallback. Ignored when a group is set | `""` |
 | `LINKUP_ALLOW_PRIVATE_TARGETS` | Allow shortening to reserved ranges. Off by default | `false` |

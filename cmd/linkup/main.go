@@ -61,6 +61,11 @@ func main() {
 		log.Fatalf("[FATAL] Failed to initialize web templates: %v", err)
 	}
 
+	// Lo que toda plantilla recibe sin que cada handler tenga que acordarse.
+	renderer.SetCommon(map[string]interface{}{
+		"ProviderName": cfg.OIDCProviderName,
+	})
+
 	// 6. Build HTTP Router
 	router := handlers.NewRouter(
 		cfg,

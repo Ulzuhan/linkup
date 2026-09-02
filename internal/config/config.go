@@ -19,6 +19,7 @@ type Config struct {
 	OIDCClientSecret    string
 	OIDCIssuerURL       string
 	OIDCInternalBase    string
+	OIDCProviderName    string
 	OIDCRedirectURI     string
 	EnrollURL           string
 	AccountURL          string
@@ -86,6 +87,15 @@ func Load() *Config {
 	// stop working the moment that tunnel does. The browser still gets sent to
 	// the public address; only the server-to-server calls take the short way.
 	oidcInternalBase := strings.TrimRight(getEnv("LINKUP_OIDC_INTERNAL_BASE", ""), "/")
+
+	// What the sign-in button calls the provider.
+	//
+	// It used to say "Login with Authentik" in the template, which is fine for
+	// us and wrong for everyone else: this is an MIT product people run against
+	// Keycloak, Zitadel or Entra, and a button naming somebody else's software
+	// is the same mistake as a hardcoded provider URL. The default says nothing
+	// about who.
+	providerName := strings.TrimSpace(getEnv("LINKUP_OIDC_PROVIDER_NAME", "your provider"))
 	oidcRedirectURI := getEnv("LINKUP_OIDC_REDIRECT_URI", "http://localhost:3464/auth/callback")
 	enrollURL := getEnv("LINKUP_ENROLL_URL", "")
 	accountURL := getEnv("LINKUP_ACCOUNT_URL", "")
@@ -121,6 +131,7 @@ func Load() *Config {
 		OIDCClientSecret:    oidcClientSecret,
 		OIDCIssuerURL:       oidcIssuerURL,
 		OIDCInternalBase:    oidcInternalBase,
+		OIDCProviderName:    providerName,
 		OIDCRedirectURI:     oidcRedirectURI,
 		EnrollURL:           enrollURL,
 		AccountURL:          accountURL,

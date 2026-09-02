@@ -151,9 +151,6 @@ img { max-width: 100%; }
 .kc-footer-nav a { color: var(--kc-text-2); text-decoration: none; }
 .kc-footer-nav a:hover { color: var(--kc-text-1); }
 .kc-footer-nav [aria-current] { color: var(--kc-text-3); }
-.kc-footer-tagline { max-width: 72rem; margin: 0.85rem auto 0; font-size: 0.72rem; color: var(--kc-text-3); text-align: center; }
-.kc-footer-tagline strong { color: var(--kc-text-2); font-weight: 500; }
-@media (min-width: 40rem) { .kc-footer-tagline { text-align: left; } }
 
 /* ── Buttons. Never under 2.25rem tall: a fingertip is not a cursor. ───── */
 .btn {

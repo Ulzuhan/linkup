@@ -3,6 +3,15 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.3] — 2026-09-02
+
+### Changed
+
+- **The footer is exactly the house's.** The tagline under the common line
+  ("Sovereign, privacy-first redirect infrastructure…") is gone: it read well
+  on its own and broke the one thing the footer is for, which is looking the
+  same in every tool. The promise it carried lives on the front page.
+
 ## [0.2.2] — 2026-09-02
 
 ### Changed

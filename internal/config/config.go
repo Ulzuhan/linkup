@@ -29,6 +29,8 @@ type Config struct {
 	AdminGroup          string
 	DevMode             bool
 	AllowPrivateTargets bool
+	// Whether the footer links to the other tools of the house.
+	FooterLinks bool
 }
 
 func Load() *Config {
@@ -100,6 +102,12 @@ func Load() *Config {
 	enrollURL := getEnv("LINKUP_ENROLL_URL", "")
 	accountURL := getEnv("LINKUP_ACCOUNT_URL", "")
 
+	// Whether the footer links to the other KaiCorp Labs tools. Off unless the
+	// operator asks for it: in somebody else's deployment those links are
+	// advertising for services of ours. Same variable, same meaning, as in the
+	// five sibling applications.
+	footerLinks := strings.TrimSpace(getEnv("KAICORP_FOOTER_LINKS", "")) != ""
+
 	// Who administers, decided by the identity provider.
 	//
 	// A group beats a list of usernames for one reason that matters in
@@ -135,6 +143,7 @@ func Load() *Config {
 		OIDCRedirectURI:     oidcRedirectURI,
 		EnrollURL:           enrollURL,
 		AccountURL:          accountURL,
+		FooterLinks:         footerLinks,
 		DBPath:              dbPath,
 		QRForgeURL:          strings.TrimRight(qrForgeURL, "/"),
 		AdminUsers:          adminUsersMap,

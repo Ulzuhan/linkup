@@ -1,26 +1,31 @@
 {{define "content"}}
+<div class="kc-workspace">
 <div class="container">
+  <div class="lk-page-head">
+    <div>
+      <h1>Your links</h1>
+      <p class="lk-page-sub">Paste a URL. What tracks the reader is stripped before it is stored.</p>
+    </div>
+    <span class="badge-privacy" title="No visitor address is ever read">Zero tracking</span>
+  </div>
+
   <!-- Stats Section -->
   <div class="stats-grid">
     <div class="stat-card">
-      <span class="stat-label">Total Shortened Links</span>
+      <span class="stat-label">Links</span>
       <span class="stat-value">{{.TotalLinks}}</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Lifetime Redirections</span>
+      <span class="stat-label">Redirections</span>
       <span class="stat-value" style="color: var(--accent-cyan);">{{.TotalClicks}}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Smart Routing</span>
-      <span class="stat-value" style="color: var(--accent-indigo); font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-        ⚡ Device / Locale / A-B
-      </span>
+      <span class="stat-value lk-stat-small">Device · A/B</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Default Domain</span>
-      <span class="stat-value mono" style="font-size: 1.1rem; color: var(--text-secondary); margin-top: 0.25rem;">
-        {{.DefaultDomain}}
-      </span>
+      <span class="stat-value mono lk-stat-small">{{.DefaultDomain}}</span>
     </div>
   </div>
 
@@ -38,14 +43,14 @@
 
   <!-- Create New Link Card -->
   <div class="card" style="margin-bottom: 2rem;">
-    <h2 style="font-size: 1.35rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-      <span>⚡ Shorten Clean Link</span>
-      <span class="badge-privacy">Auto-strips surveillance parameters</span>
-    </h2>
+    <div class="lk-card-head">
+      <h2>Shorten a link</h2>
+      <span class="badge-privacy">Strips tracking parameters</span>
+    </div>
 
     <form method="POST" action="/links/create" id="create-link-form">
       <div class="form-group">
-        <label for="target-url-input" class="form-label">Default Destination URL</label>
+        <label for="target-url-input" class="form-label">Destination URL</label>
         <input 
           type="text" 
           id="target-url-input" 
@@ -60,18 +65,18 @@
       <!-- Live Tracking Stripper Preview Box -->
       <div id="stripper-preview-box" style="display: none; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.25rem;">
         <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent-rose); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
-          <span>✂️ Trackers detected and will be stripped:</span>
+          <span>Trackers detected, to be stripped:</span>
         </div>
         <div id="stripped-tags" style="margin-bottom: 0.5rem;"></div>
         <div style="font-size: 0.8rem; color: var(--text-muted);">
-          Sanitized clean target: <span id="clean-url-display" class="mono" style="color: var(--accent-cyan);"></span>
+          Stored as: <span id="clean-url-display" class="mono" style="color: var(--accent-cyan);"></span>
         </div>
       </div>
 
       <!-- Advanced Options Accordion -->
       <details style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
         <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); user-select: none;">
-          ⚙️ Advanced Security, Multi-Domain & Smart Routing Options
+          Options: PIN, expiry, domains and smart routing
         </summary>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
@@ -88,7 +93,7 @@
           {{end}}
 
           <div class="form-group">
-            <label class="form-label">Custom Slug (Optional)</label>
+            <label class="form-label">Custom slug (optional)</label>
             <div style="display: flex; align-items: center;">
               <span class="mono" style="background: var(--bg-input); border: 1px solid var(--border); border-right: none; padding: 0.75rem 0.5rem; border-radius: 0.5rem 0 0 0.5rem; font-size: 0.85rem; color: var(--text-muted);">/</span>
               <input type="text" name="custom_slug" class="form-input mono" placeholder="my-cool-link" style="border-radius: 0 0.5rem 0.5rem 0;">
@@ -96,17 +101,17 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Title / Label (Optional)</label>
+            <label class="form-label">Title (optional)</label>
             <input type="text" name="title" class="form-input" placeholder="e.g. Q4 Roadmap Doc">
           </div>
 
           {{if .Folders}}
             <div class="form-group">
-              <label class="form-label">Folder / Project</label>
+              <label class="form-label">Folder</label>
               <select name="folder_id" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
                 <option value="">No Folder (General)</option>
                 {{range .Folders}}
-                  <option value="{{.ID}}">📁 {{.Name}}</option>
+                  <option value="{{.ID}}">{{.Name}}</option>
                 {{end}}
               </select>
             </div>
@@ -118,22 +123,22 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Password / PIN Gate (Optional)</label>
+            <label class="form-label">PIN (optional)</label>
             <input type="password" name="pin" class="form-input mono" placeholder="Leave empty for public link">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Max Click Budget (Self-destruct)</label>
+            <label class="form-label">Click budget (self-destructs after)</label>
             <input type="number" name="max_clicks" class="form-input" placeholder="e.g. 50 (0 = unlimited)" min="1">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Expire After (Hours)</label>
+            <label class="form-label">Expires after (hours)</label>
             <input type="number" name="expires_in_hours" class="form-input" placeholder="e.g. 48 (0 = forever)" min="1">
           </div>
 
           <div class="form-group">
-            <label class="form-label">HTTP Redirect Code</label>
+            <label class="form-label">Redirect code</label>
             <select name="redirect_type" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
               <option value="302" selected>302 Found (Temporary - Recommended)</option>
               <option value="301">301 Moved Permanently</option>
@@ -143,19 +148,19 @@
 
         <!-- Smart Conditional Routing Inputs -->
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0;">
-        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-indigo);">📱 Device Conditional Routing</h4>
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-indigo);">Routing by device</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
           <div class="form-group" style="margin: 0;">
-            <label class="form-label">iOS / App Store Target URL</label>
+            <label class="form-label">iOS target</label>
             <input type="url" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id...">
           </div>
           <div class="form-group" style="margin: 0;">
-            <label class="form-label">Android / Play Store Target URL</label>
+            <label class="form-label">Android target</label>
             <input type="url" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=...">
           </div>
         </div>
 
-        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-cyan);">⚖️ A/B Split Testing (Traffic Distribution)</h4>
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-cyan);">A/B split</h4>
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 0.5rem;">
           <input type="url" name="ab_url_a" class="form-input mono" placeholder="Variant A URL (e.g. Landing Page 1)">
           <input type="number" name="ab_weight_a" class="form-input" placeholder="Weight % (e.g. 50)" min="1" max="99">
@@ -167,19 +172,19 @@
       </details>
 
       <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
-        Generate Sovereign Clean Link
+        Create clean link
       </button>
     </form>
   </div>
 
   <!-- Folder Tabs / Filter Bar -->
-  <div style="display: flex; gap: 0.5rem; align-items: center; overflow-x: auto; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+  <div class="lk-tabs">
     <a href="/" class="btn {{if not .CurrentFolder}}btn-primary{{else}}btn-secondary{{end}} btn-sm">
       All Links
     </a>
     {{range .Folders}}
       <a href="/?folder={{.ID}}" class="btn {{if eq $.CurrentFolder .ID}}btn-primary{{else}}btn-secondary{{end}} btn-sm" style="border-left: 3px solid {{.Color}};">
-        📁 {{.Name}}
+        {{.Name}}
       </a>
     {{end}}
     <button id="add-folder-btn" class="btn btn-secondary btn-sm">+ New Folder</button>
@@ -187,13 +192,13 @@
 
   <!-- Links Table -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-      <h2 style="font-size: 1.35rem;">Shortened Links</h2>
+    <div class="lk-card-head">
+      <h2>Shortened links</h2>
       <span style="font-size: 0.85rem; color: var(--text-muted);">{{len .Links}} links</span>
     </div>
 
     {{if .Links}}
-      <div class="table-responsive">
+      <div class="table-responsive lk-table">
         <table>
           <thead>
             <tr>
@@ -207,14 +212,14 @@
           <tbody>
             {{range .Links}}
               <tr>
-                <td>
+                <td data-label="Link">
                   <div style="display: flex; flex-direction: column; gap: 0.2rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem;">
                       <a href="/{{.Slug}}" target="_blank" class="mono" style="font-weight: 600; color: var(--accent-cyan); text-decoration: none;">
                         {{if .Domain}}{{.Domain}}/{{.Slug}}{{else}}/{{.Slug}}{{end}}
                       </a>
                       {{if .HasPIN}}
-                        <span title="Password Protected" style="font-size: 0.8rem;">🔒</span>
+                        <span class="status-pill status-locked" style="font-size: 0.65rem; padding: 0.05rem 0.45rem;">PIN</span>
                       {{end}}
                     </div>
                     <span style="font-size: 0.8rem; color: var(--text-muted);">{{.Title}}</span>
@@ -228,27 +233,27 @@
                     {{end}}
                   </div>
                 </td>
-                <td style="max-width: 320px;">
-                  <div class="mono" style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{.TargetURL}}">
+                <td data-label="Destination" class="lk-dest">
+                  <div class="mono lk-dest-url" title="{{.TargetURL}}">
                     {{.TargetURL}}
                   </div>
                   {{if .IOSURL}}
                     <div style="font-size: 0.75rem; color: var(--accent-indigo); margin-top: 0.15rem;">
-                      🍏 iOS Target Configured
+                      iOS target set
                     </div>
                   {{end}}
                   {{if .AndroidURL}}
                     <div style="font-size: 0.75rem; color: var(--accent-emerald); margin-top: 0.15rem;">
-                      🤖 Android Target Configured
+                      Android target set
                     </div>
                   {{end}}
                   {{if .ABVariants}}
                     <div style="font-size: 0.75rem; color: var(--accent-cyan); margin-top: 0.15rem;">
-                      ⚖️ A/B Test Active ({{len .ABVariants}} variants)
+                      A/B split active ({{len .ABVariants}} variants)
                     </div>
                   {{end}}
                 </td>
-                <td>
+                <td data-label="Status">
                   {{if .IsExpired}}
                     <span class="status-pill status-expired">Expired</span>
                   {{else if .HasPIN}}
@@ -257,20 +262,20 @@
                     <span class="status-pill status-active">Active</span>
                   {{end}}
                 </td>
-                <td>
+                <td data-label="Clicks">
                   <span class="mono" style="font-weight: 600; font-size: 0.95rem;">
                     {{.ClickCount}}
                     {{if .MaxClicks}}<span style="color: var(--text-muted); font-size: 0.8rem;">/{{.MaxClicks}}</span>{{end}}
                   </span>
                 </td>
-                <td style="text-align: right;">
-                  <div style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                <td class="lk-actions">
+                  <div class="lk-actions-row">
                     <button 
                       class="btn btn-secondary btn-sm copy-btn" 
                       data-copy="{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
                       title="Copy Link to Clipboard"
                     >
-                      📋 Copy
+                      Copy
                     </button>
                     <a 
                       href="/preview/{{.Slug}}" 
@@ -278,7 +283,7 @@
                       target="_blank" 
                       title="Inspect Clean URL Preview"
                     >
-                      👁️ Preview
+                      Preview
                     </a>
                     <button 
                       class="btn btn-secondary btn-sm qr-btn" 
@@ -286,15 +291,16 @@
                       data-qrforge="{{$.QRForgeURL}}"
                       title="Generate QR via QR-Forge"
                     >
-                      📱 QR
+                      QR
                     </button>
                     <button 
                       class="btn btn-danger btn-sm delete-link-btn" 
                       data-id="{{.ID}}" 
                       data-slug="{{.Slug}}" 
                       title="Delete Link"
+                      aria-label="Delete link"
                     >
-                      🗑️
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -305,23 +311,23 @@
       </div>
     {{else}}
       <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔗</div>
         <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem;">No shortened links yet</p>
         <p style="font-size: 0.85rem;">Paste any URL above to generate your first clean, privacy-respecting short link.</p>
       </div>
     {{end}}
   </div>
 </div>
+</div>
 
 <!-- QR Forge Modal -->
 <div id="qr-modal" class="modal-overlay">
   <div class="modal-box" style="text-align: center;">
-    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">QR Code Integration</h3>
+    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">QR code</h3>
     <p class="mono" id="qr-link-text" style="font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 1.25rem; word-break: break-all;"></p>
     
     <div style="display: flex; gap: 0.75rem; justify-content: center;">
       <a id="qr-forge-direct" href="#" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
-        ✨ Customize in QR-Forge
+        Open in QR-Forge ↗
       </a>
       <button id="qr-modal-close" class="btn btn-secondary btn-sm">Close</button>
     </div>

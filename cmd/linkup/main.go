@@ -63,7 +63,12 @@ func main() {
 
 	// Lo que toda plantilla recibe sin que cada handler tenga que acordarse.
 	renderer.SetCommon(map[string]interface{}{
-		"ProviderName": cfg.OIDCProviderName,
+		"ProviderName":  cfg.OIDCProviderName,
+		"FooterLinks":   cfg.FooterLinks,
+		"EnrollURL":     cfg.EnrollURL,
+		"AccountURL":    cfg.AccountURL,
+		"QRForgeURL":    cfg.QRForgeURL,
+		"DefaultDomain": cfg.DefaultDomain,
 	})
 
 	// 6. Build HTTP Router

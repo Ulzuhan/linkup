@@ -243,3 +243,15 @@ function escapeHtml(str) {
     tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
   );
 }
+
+// The account menu is a <details>: it works with no script at all. This only
+// closes it when you click somewhere else or press Escape, which a <details>
+// does not do on its own.
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('details.kc-account[open]').forEach((d) => {
+    if (!d.contains(e.target)) d.removeAttribute('open');
+  });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.querySelectorAll('details.kc-account[open]').forEach((d) => d.removeAttribute('open'));
+});

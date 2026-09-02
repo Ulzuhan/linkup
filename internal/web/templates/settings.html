@@ -1,13 +1,12 @@
 {{define "content"}}
+<div class="kc-workspace">
 <div class="container" style="max-width: 960px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div class="lk-page-head">
     <div>
-      <h1 style="font-size: 1.75rem;">⚙️ Settings & Integrations</h1>
-      <p style="color: var(--text-secondary); font-size: 0.9rem;">
-        Manage programmatic API keys, custom branded domains, and real-time webhook automations.
-      </p>
+      <h1>Settings</h1>
+      <p class="lk-page-sub">API keys, your own domains, webhooks and bulk import.</p>
     </div>
-    <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+    <a href="/" class="btn btn-secondary btn-sm">← Back to links</a>
   </div>
 
   {{if .FlashSuccess}}
@@ -24,13 +23,13 @@
 
   {{if .NewAPIKey}}
     <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem;">
-      <h3 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">🔑 New API Key Generated</h3>
+      <h3 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Your new API key</h3>
       <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-        Copy this key now. For your security, this is the only time it will ever be displayed in plain text.
+        Copy it now: this is the only time it is shown in full.
       </p>
-      <div style="display: flex; gap: 0.75rem;">
+      <div class="lk-inline-form">
         <input type="text" readonly value="{{.NewAPIKey}}" class="form-input mono" style="background: var(--bg-primary); color: #67e8f9; font-weight: 600;">
-        <button class="btn btn-primary copy-btn" data-copy="{{.NewAPIKey}}">📋 Copy Key</button>
+        <button class="btn btn-primary copy-btn" data-copy="{{.NewAPIKey}}">Copy key</button>
       </div>
     </div>
   {{end}}
@@ -39,18 +38,18 @@
   <div class="card" style="margin-bottom: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
       <div>
-        <h2 style="font-size: 1.25rem;">Programmatic API Keys</h2>
+        <h2 style="font-size: 1.25rem;">API keys</h2>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Use Bearer tokens to create links from scripts, Raycast, CLI or bots.</p>
       </div>
     </div>
 
-    <form method="POST" action="/settings/keys" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
-      <input type="text" name="name" placeholder="Key name (e.g. Raycast, Telegram Bot, CI)" class="form-input" required style="flex: 1;">
-      <button type="submit" class="btn btn-primary">Generate API Key</button>
+    <form method="POST" action="/settings/keys" class="lk-inline-form">
+      <input type="text" name="name" placeholder="Key name (e.g. Raycast, Telegram bot, CI)" class="form-input" required aria-label="Key name">
+      <button type="submit" class="btn btn-primary">Generate key</button>
     </form>
 
     {{if .APIKeys}}
-      <div class="table-responsive">
+      <div class="table-responsive lk-table">
         <table>
           <thead>
             <tr>
@@ -90,18 +89,18 @@
   <div class="card" style="margin-bottom: 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
       <div>
-        <h2 style="font-size: 1.25rem;">Custom Branded Domains</h2>
+        <h2 style="font-size: 1.25rem;">Your own domains</h2>
         <p style="font-size: 0.85rem; color: var(--text-muted);">Route short links through your own domains (e.g. <code>go.mycompany.com</code>).</p>
       </div>
     </div>
 
-    <form method="POST" action="/settings/domains" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
-      <input type="text" name="domain" placeholder="go.example.com" class="form-input mono" required style="flex: 1;">
-      <button type="submit" class="btn btn-primary">Add Custom Domain</button>
+    <form method="POST" action="/settings/domains" class="lk-inline-form">
+      <input type="text" name="domain" placeholder="go.example.com" class="form-input mono" required aria-label="Domain">
+      <button type="submit" class="btn btn-primary">Add domain</button>
     </form>
 
     {{if .CustomDomains}}
-      <div class="table-responsive">
+      <div class="table-responsive lk-table">
         <table>
           <thead>
             <tr>
@@ -133,7 +132,7 @@
   <!-- Real-time Webhooks Section -->
   <div class="card" style="margin-bottom: 2rem;">
     <div style="margin-bottom: 1.25rem;">
-      <h2 style="font-size: 1.25rem;">Real-time Webhooks</h2>
+      <h2 style="font-size: 1.25rem;">Webhooks</h2>
       <p style="font-size: 0.85rem; color: var(--text-muted);">Receive instantaneous HMAC-signed HTTP POST alerts on link lifecycle events.</p>
     </div>
 
@@ -144,30 +143,30 @@
       </div>
 
       <div class="form-group" style="margin: 0;">
-        <label class="form-label">Secret Key (Optional - auto-generated if empty)</label>
-        <input type="text" name="secret" placeholder="Leave empty for auto-generated signing secret" class="form-input mono">
+        <label class="form-label">Signing secret (optional, generated if empty)</label>
+        <input type="text" name="secret" placeholder="Leave empty to generate one" class="form-input mono">
       </div>
 
-      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-secondary);">
-        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+      <div class="lk-checks">
+        <label>
           <input type="checkbox" name="events" value="link.created" checked>
           <span>link.created</span>
         </label>
-        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+        <label>
           <input type="checkbox" name="events" value="link.expired_ttl" checked>
           <span>link.expired_ttl</span>
         </label>
-        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+        <label>
           <input type="checkbox" name="events" value="link.self_destructed" checked>
           <span>link.self_destructed</span>
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Register Webhook</button>
+      <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Register webhook</button>
     </form>
 
     {{if .Webhooks}}
-      <div class="table-responsive">
+      <div class="table-responsive lk-table">
         <table>
           <thead>
             <tr>
@@ -198,20 +197,21 @@
 
   <!-- Bulk CSV Data Operations -->
   <div class="card">
-    <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Data Export & Bulk CSV</h2>
+    <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Export and bulk import</h2>
     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Export your catalog or upload a batch CSV of URLs to shorten at once.</p>
 
     <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
       <a href="/api/links/export" class="btn btn-secondary">
-        📥 Download All Links as CSV
+        Download all links as CSV
       </a>
 
       <label class="btn btn-primary" style="cursor: pointer;">
-        📤 Bulk Import CSV
+        Import CSV
         <input type="file" id="bulk-csv-upload" accept=".csv" style="display: none;">
       </label>
       <span id="bulk-csv-status" style="font-size: 0.85rem; color: var(--accent-cyan);"></span>
     </div>
   </div>
+</div>
 </div>
 {{end}}

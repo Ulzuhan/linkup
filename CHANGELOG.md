@@ -3,6 +3,40 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-09-02
+
+### Added
+
+- **A front page.** An anonymous visitor used to land on the dashboard with
+  nothing in it and a sign-in button in the corner. The root is now a front
+  page: what the tool does, a link before and after, where to sign in and where
+  to ask for an account. Signed in, the same address is the workspace.
+
+### Changed
+
+- **The chrome is the house's.** Header and footer are the same bar and the
+  same foot as in the other KaiCorp Labs tools: the mark, the tool's name, and
+  on the right one account menu — who you are, settings, your account at the
+  provider, sign out. The foot says who built it and, only when the operator
+  sets `KAICORP_FOOTER_LINKS`, links to the other tools: in somebody else's
+  deployment those links are advertising, so by default they are not there.
+  The tagline stays in the foot.
+- **Composed with the shared theme.** `kaicorp.css` and `landing-polish.css`
+  ship as generated copies from the kaicorplabs repository and the pages use
+  their composition. LinkUp keeps its own palette, as every tool of the house
+  does; what is shared is the type and the frame.
+- **Phones.** Under 640 px the links table becomes a stack of cards with the
+  actions in reach, the inline forms in Settings stack instead of squeezing the
+  field, the header no longer breaks the username in half, and nothing you can
+  press is under 36 px tall — 44 on touch screens. Emoji left the buttons,
+  headings and labels.
+
+### Fixed
+
+- Every page was titled "Dashboard", including the front page an anonymous
+  visitor saw; the favicon was an emoji rendered by whatever font the visitor
+  had.
+
 ## [0.1.5] — 2026-09-02
 
 ### Fixed

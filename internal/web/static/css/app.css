@@ -394,6 +394,22 @@ tr:hover td { background: #172136; }
 .lk-clicks-max { color: var(--text-muted); font-size: 0.8rem; }
 .lk-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
 .lk-empty-title { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+/* El QR del modal.
+ *
+ * Fondo blanco y relleno propios: el panel es oscuro y un QR sobre oscuro no lo
+ * lee ningún teléfono. El SVG ya trae su fondo, pero el relleno de aquí es lo
+ * que le da la zona de silencio visual cuando alguien lo fotografía de una
+ * pantalla. */
+.lk-qr {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border-radius: 0.5rem;
+}
+
 .lk-modal-link { font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 1.25rem; word-break: break-all; }
 .lk-modal-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 

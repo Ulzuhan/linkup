@@ -58,7 +58,10 @@ promise above worthless, so there isn't one.
 - **Bulk import and export** as CSV.
 - **Signed webhooks** (HMAC-SHA256) on link events.
 - **REST API** with hashed API keys.
-- **QR codes** via a [QR-Forge](https://github.com/Ulzuhan/qr-forge) instance.
+- **QR codes drawn here** — SVG in the panel, PNG to download, and nothing
+  fetched from anyone. Hand one over to a
+  [QR-Forge](https://github.com/Ulzuhan/qr-forge) instance with its form already
+  filled in.
 
 ## How fast, measured rather than claimed
 

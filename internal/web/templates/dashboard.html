@@ -293,6 +293,8 @@
                     </a>
                     <button 
                       class="btn btn-secondary btn-sm qr-btn" 
+                      data-id="{{.ID}}"
+                      data-title="{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}"
                       data-url="https://{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
                       data-qrforge="{{$.QRForgeURL}}"
                       title="Generate QR via QR-Forge"
@@ -336,12 +338,16 @@
 <div id="qr-modal" class="modal-overlay">
   <div class="modal-box lk-center">
     <h3 class="lk-h2 mb-05">QR code</h3>
+    <img id="qr-image" class="lk-qr" alt="">
     <p class="mono lk-modal-link" id="qr-link-text"></p>
-    
+
     <div class="lk-modal-actions">
+      <a id="qr-png" href="#" download class="btn btn-secondary btn-sm">Download PNG</a>
+      {{if .QRForgeURL}}
       <a id="qr-forge-direct" href="#" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
-        Open in QR-Forge ↗
+        Design in QR-Forge ↗
       </a>
+      {{end}}
       <button id="qr-modal-close" class="btn btn-secondary btn-sm">Close</button>
     </div>
   </div>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/Ulzuhan/linkup/internal/config"
@@ -153,7 +154,28 @@ func (h *RedirectHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanURL, stripped, _ := services.CleanURL(link.OriginalURL, h.cfg.PublicHost)
-	qrForgeLink := fmt.Sprintf("%s/?text=%s", h.cfg.QRForgeURL, link.TargetURL)
+	// La intención, no un parámetro suelto: QR-Forge abre el formulario con la
+	// URL y el título puestos y en modo estático. El contrato está en su README.
+	//
+	// Y se manda la URL CORTA, no el destino, que es lo que llevaba antes. Un
+	// QR del destino se salta a LinkUp: no cuenta el clic y deja de poder
+	// cambiarse. Además la nota que enseña QR-Forge —«este enlace ya es dinámico
+	// en LinkUp»— solo es cierta si lo que codifica es el enlace corto.
+	dominioQR := link.Domain
+	if dominioQR == "" {
+		dominioQR = h.cfg.DefaultDomain
+	}
+	urlCorta := fmt.Sprintf("https://%s/%s", dominioQR, link.Slug)
+
+	tituloQR := link.Title
+	if tituloQR == "" {
+		tituloQR = link.Slug
+	}
+	qrForgeLink := fmt.Sprintf("%s/new?url=%s&title=%s&from=linkup",
+		h.cfg.QRForgeURL,
+		url.QueryEscape(urlCorta),
+		url.QueryEscape(tituloQR),
+	)
 
 	data := models.PublicPreviewData{
 		Slug:           link.Slug,

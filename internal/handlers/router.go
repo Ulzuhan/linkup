@@ -99,6 +99,8 @@ func NewRouter(
 		r.Get("/links", apiHandler.ListLinks)
 		r.Post("/links", apiHandler.CreateLink)
 		r.Get("/links/{id}", apiHandler.GetLink)
+		r.Get("/links/{id}/qr.svg", apiHandler.LinkQR)
+		r.Get("/links/{id}/qr.png", apiHandler.LinkQR)
 		r.Patch("/links/{id}", apiHandler.UpdateLink)
 		r.Delete("/links/{id}", apiHandler.DeleteLink)
 

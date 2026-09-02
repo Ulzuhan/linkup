@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -129,6 +130,61 @@ func (h *APIHandler) GetLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSON(w, http.StatusOK, link)
+}
+
+// LinkQR handles GET /api/links/{id}/qr.svg and GET /api/links/{id}/qr.png
+//
+// The QR is drawn here rather than fetched from anywhere: see services/qr.go for
+// why. Authorisation is the same as GetLink — a QR is a picture of a private
+// destination, and handing it out would hand out the destination.
+func (h *APIHandler) LinkQR(w http.ResponseWriter, r *http.Request) {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
+		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	link, err := h.linkService.GetByID(id)
+	if err != nil || link == nil {
+		sendJSON(w, http.StatusNotFound, map[string]string{"error": "Link not found"})
+		return
+	}
+	if !session.IsAdmin && link.CreatedBy != session.Username {
+		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
+		return
+	}
+
+	// Exactamente lo mismo que devuelve short_url al crear: si difiriera, el
+	// código impreso llevaría a otro sitio que el enlace que se copió.
+	dominio := link.Domain
+	if dominio == "" {
+		dominio = h.cfg.DefaultDomain
+	}
+	contenido := fmt.Sprintf("https://%s/%s", dominio, link.Slug)
+
+	// Privado y no público: es el destino de alguien, no un recurso estático.
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+
+	if strings.HasSuffix(r.URL.Path, ".png") {
+		png, err := services.PNGDeQR(contenido, 512)
+		if err != nil {
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Could not render the QR"})
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", link.Slug+".png"))
+		_, _ = w.Write(png)
+		return
+	}
+
+	svg, err := services.SVGDeQR(contenido)
+	if err != nil {
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Could not render the QR"})
+		return
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	_, _ = w.Write(svg)
 }
 
 // UpdateLink handles PATCH /api/links/{id}

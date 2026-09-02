@@ -3,6 +3,24 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-09-02
+
+### Added
+
+- **The QR code is drawn here.** `GET /api/links/{id}/qr.svg` and `qr.png`,
+  behind the same ownership check as the link itself — a QR is a picture of a
+  private destination, and handing it out hands out the destination. The modal
+  shows it and offers the PNG for download. One pure-Go dependency, no CGO, so
+  the binary stays static.
+
+### Changed
+
+- **The link to QR-Forge carries the intent** instead of a loose parameter:
+  `/new?url=…&title=…&from=linkup` opens a form that is already filled in. And
+  it sends the *short* URL, not the destination — a QR of the destination
+  bypasses LinkUp, so the click is never counted and the target can no longer be
+  changed, which is the whole point of the link.
+
 ## [0.3.0] — 2026-09-02
 
 ### Added

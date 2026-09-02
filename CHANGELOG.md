@@ -3,6 +3,17 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] — 2026-09-02
+
+### Fixed
+
+- **Sign-in failed when the provider was reached over an internal address.**
+  The provider derives the issuer from the Host it is asked on, so the token
+  minted during the server-side code exchange carried the internal issuer while
+  the verifier expected the public one. Both are the same provider and both are
+  legitimate; both are now accepted, and every other issuer is still rejected —
+  the check moved out of the library rather than being switched off.
+
 ## [0.1.3] — 2026-09-02
 
 ### Changed

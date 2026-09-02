@@ -53,7 +53,13 @@ func NewAuthService(cfg *config.Config) *AuthService {
 				endpoint = provider.Endpoint()
 			}
 			as.provider = provider
-			as.verifier = provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID})
+			as.verifier = provider.Verifier(&oidc.Config{
+				ClientID: cfg.OIDCClientID,
+				// El emisor se comprueba a mano en HandleCallback contra
+				// `emisorValido`, porque hay DOS legítimos cuando el
+				// descubrimiento va por la vía interna. Ver oidc_origen.go.
+				SkipIssuerCheck: cfg.OIDCInternalBase != "",
+			})
 			as.oauth2Config = &oauth2.Config{
 				ClientID:     cfg.OIDCClientID,
 				ClientSecret: cfg.OIDCClientSecret,
@@ -144,6 +150,12 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 	idToken, err := a.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify ID token: %w", err)
+	}
+
+	// Comprobado aquí y no por la librería: son dos los emisores legítimos.
+	// Saltarse la comprobación sin hacerla sería aceptar cualquier emisor.
+	if !emisorValido(idToken.Issuer, a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase) {
+		return nil, fmt.Errorf("ID token issued by an unexpected provider: %q", idToken.Issuer)
 	}
 
 	if idToken.Nonce != expectedNonce {
@@ -275,7 +287,10 @@ func (a *AuthService) reinitProvider() error {
 		return err
 	}
 	a.provider = provider
-	a.verifier = provider.Verifier(&oidc.Config{ClientID: a.cfg.OIDCClientID})
+	a.verifier = provider.Verifier(&oidc.Config{
+		ClientID:        a.cfg.OIDCClientID,
+		SkipIssuerCheck: a.cfg.OIDCInternalBase != "",
+	})
 	endpoint, err := endpointPublico(provider.Endpoint(), a.cfg.OIDCIssuerURL)
 	if err != nil {
 		return fmt.Errorf("could not map the authorization endpoint to the public origin: %w", err)

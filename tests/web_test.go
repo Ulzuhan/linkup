@@ -168,3 +168,35 @@ func TestSignedInHomeIsTheDashboard(t *testing.T) {
 		t.Errorf("dashboard shows the front page")
 	}
 }
+
+// Nothing rendered carries a style attribute or a <style> block: the policy
+// says `style-src 'self'` and a single inline style would be the first thing
+// a browser refused. Exercised with a link that has a PIN, tags and a folder,
+// which is where the last inline styles lived.
+func TestNoInlineStylesAnywhere(t *testing.T) {
+	h, _, _, done := setupTestServer(t)
+	defer done()
+	post := func(path, body string) *httptest.ResponseRecorder {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(rr, req)
+		return rr
+	}
+	if rr := post("/api/folders", `{"name":"Launch","color":"#f59e0b"}`); rr.Code >= 300 {
+		t.Fatalf("folder: %d %s", rr.Code, rr.Body.String())
+	}
+	if rr := post("/api/links", `{"url":"https://example.com/p?utm_source=x&id=7","custom_slug":"styled","pin":"1234","tags":["a","b"],"ios_url":"https://apps.apple.com/x"}`); rr.Code != http.StatusCreated {
+		t.Fatalf("link: %d %s", rr.Code, rr.Body.String())
+	}
+	for _, path := range []string{"/", "/settings", "/preview/styled", "/pin/styled", "/no-such-link-here"} {
+		body := get(t, h, path).Body.String()
+		if strings.Contains(body, `style="`) || strings.Contains(body, "<style") {
+			t.Errorf("%s renders an inline style", path)
+		}
+	}
+	csp := get(t, h, "/").Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "style-src 'self';") || strings.Contains(csp, "unsafe-inline") {
+		t.Errorf("CSP %q, want style-src 'self' with no unsafe-inline", csp)
+	}
+}

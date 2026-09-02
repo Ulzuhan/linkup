@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="kc-workspace">
-<div class="container" style="max-width: 960px;">
+<div class="container lk-narrow">
   <div class="lk-page-head">
     <div>
       <h1>Settings</h1>
@@ -10,36 +10,36 @@
   </div>
 
   {{if .FlashSuccess}}
-    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+    <div class="flash flash-ok">
       ✓ {{.FlashSuccess}}
     </div>
   {{end}}
 
   {{if .FlashError}}
-    <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+    <div class="flash flash-err">
       ⚠ {{.FlashError}}
     </div>
   {{end}}
 
   {{if .NewAPIKey}}
-    <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 2rem;">
-      <h3 style="color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem;">Your new API key</h3>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+    <div class="lk-keybox">
+      <h3>Your new API key</h3>
+      <p class="lk-secondary mb-1">
         Copy it now: this is the only time it is shown in full.
       </p>
       <div class="lk-inline-form">
-        <input type="text" readonly value="{{.NewAPIKey}}" class="form-input mono" style="background: var(--bg-primary); color: #67e8f9; font-weight: 600;">
+        <input type="text" readonly value="{{.NewAPIKey}}" class="form-input mono lk-key-input">
         <button class="btn btn-primary copy-btn" data-copy="{{.NewAPIKey}}">Copy key</button>
       </div>
     </div>
   {{end}}
 
   <!-- API Keys Section -->
-  <div class="card" style="margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+  <div class="card mb-2">
+    <div class="lk-card-head">
       <div>
-        <h2 style="font-size: 1.25rem;">API keys</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">Use Bearer tokens to create links from scripts, Raycast, CLI or bots.</p>
+        <h2>API keys</h2>
+        <p class="lk-muted">Use Bearer tokens to create links from scripts, Raycast, CLI or bots.</p>
       </div>
     </div>
 
@@ -56,7 +56,7 @@
               <th>Name & Prefix</th>
               <th>Created</th>
               <th>Last Used</th>
-              <th style="text-align: right;">Action</th>
+              <th class="lk-right">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -64,15 +64,15 @@
               <tr>
                 <td>
                   <strong>{{.Name}}</strong>
-                  <div class="mono" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{.KeyPrefix}}</div>
+                  <div class="mono lk-muted-sm mt-02">{{.KeyPrefix}}</div>
                 </td>
-                <td style="color: var(--text-secondary); font-size: 0.8rem;">
+                <td class="lk-secondary-sm">
                   {{.CreatedAt}}
                 </td>
-                <td style="color: var(--text-secondary); font-size: 0.8rem;">
-                  {{if .LastUsedAt}}{{.LastUsedAt}}{{else}}<span style="color: var(--text-muted);">Never</span>{{end}}
+                <td class="lk-secondary-sm">
+                  {{if .LastUsedAt}}{{.LastUsedAt}}{{else}}<span class="lk-muted-text">Never</span>{{end}}
                 </td>
-                <td style="text-align: right;">
+                <td class="lk-right">
                   <button class="btn btn-danger btn-sm delete-api-key-btn" data-id="{{.ID}}">Revoke</button>
                 </td>
               </tr>
@@ -81,16 +81,16 @@
         </table>
       </div>
     {{else}}
-      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No active API keys yet.</p>
+      <p class="lk-empty-note">No active API keys yet.</p>
     {{end}}
   </div>
 
   <!-- Custom Domains Section -->
-  <div class="card" style="margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+  <div class="card mb-2">
+    <div class="lk-card-head">
       <div>
-        <h2 style="font-size: 1.25rem;">Your own domains</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted);">Route short links through your own domains (e.g. <code>go.mycompany.com</code>).</p>
+        <h2>Your own domains</h2>
+        <p class="lk-muted">Route short links through your own domains (e.g. <code>go.mycompany.com</code>).</p>
       </div>
     </div>
 
@@ -107,16 +107,16 @@
               <th>Domain</th>
               <th>Status</th>
               <th>Added</th>
-              <th style="text-align: right;">Action</th>
+              <th class="lk-right">Action</th>
             </tr>
           </thead>
           <tbody>
             {{range .CustomDomains}}
               <tr>
-                <td class="mono" style="font-weight: 600; color: var(--accent-cyan);">{{.Domain}}</td>
+                <td class="mono lk-code-cyan">{{.Domain}}</td>
                 <td><span class="status-pill status-active">✓ Verified</span></td>
-                <td style="color: var(--text-secondary); font-size: 0.8rem;">{{.CreatedAt}}</td>
-                <td style="text-align: right;">
+                <td class="lk-secondary-sm">{{.CreatedAt}}</td>
+                <td class="lk-right">
                   <button class="btn btn-danger btn-sm delete-domain-btn" data-id="{{.ID}}">Remove</button>
                 </td>
               </tr>
@@ -125,24 +125,24 @@
         </table>
       </div>
     {{else}}
-      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No custom domains configured. Using default: <code class="mono">{{.DefaultDomain}}</code></p>
+      <p class="lk-empty-note">No custom domains configured. Using default: <code class="mono">{{.DefaultDomain}}</code></p>
     {{end}}
   </div>
 
   <!-- Real-time Webhooks Section -->
-  <div class="card" style="margin-bottom: 2rem;">
-    <div style="margin-bottom: 1.25rem;">
-      <h2 style="font-size: 1.25rem;">Webhooks</h2>
-      <p style="font-size: 0.85rem; color: var(--text-muted);">Receive instantaneous HMAC-signed HTTP POST alerts on link lifecycle events.</p>
+  <div class="card mb-2">
+    <div class="lk-card-head">
+      <h2>Webhooks</h2>
+      <p class="lk-muted">Receive instantaneous HMAC-signed HTTP POST alerts on link lifecycle events.</p>
     </div>
 
-    <form method="POST" action="/settings/webhooks" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-      <div class="form-group" style="margin: 0;">
+    <form class="lk-form-col" method="POST" action="/settings/webhooks">
+      <div class="form-group tight">
         <label class="form-label">Endpoint URL</label>
         <input type="url" name="url" placeholder="https://api.example.com/webhooks/linkup" class="form-input mono" required>
       </div>
 
-      <div class="form-group" style="margin: 0;">
+      <div class="form-group tight">
         <label class="form-label">Signing secret (optional, generated if empty)</label>
         <input type="text" name="secret" placeholder="Leave empty to generate one" class="form-input mono">
       </div>
@@ -162,7 +162,7 @@
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Register webhook</button>
+      <button type="submit" class="btn btn-primary lk-self-start">Register webhook</button>
     </form>
 
     {{if .Webhooks}}
@@ -173,16 +173,16 @@
               <th>Target URL</th>
               <th>Subscribed Events</th>
               <th>Status</th>
-              <th style="text-align: right;">Action</th>
+              <th class="lk-right">Action</th>
             </tr>
           </thead>
           <tbody>
             {{range .Webhooks}}
               <tr>
-                <td class="mono" style="font-size: 0.85rem; color: var(--text-primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{.URL}}</td>
-                <td style="font-size: 0.8rem; color: var(--accent-indigo);">{{.Events}}</td>
+                <td class="mono lk-cell-url">{{.URL}}</td>
+                <td class="lk-cell-events">{{.Events}}</td>
                 <td><span class="status-pill status-active">Active</span></td>
-                <td style="text-align: right;">
+                <td class="lk-right">
                   <button class="btn btn-danger btn-sm delete-webhook-btn" data-id="{{.ID}}">Delete</button>
                 </td>
               </tr>
@@ -191,25 +191,25 @@
         </table>
       </div>
     {{else}}
-      <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No webhooks registered.</p>
+      <p class="lk-empty-note">No webhooks registered.</p>
     {{end}}
   </div>
 
   <!-- Bulk CSV Data Operations -->
   <div class="card">
-    <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Export and bulk import</h2>
-    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Export your catalog or upload a batch CSV of URLs to shorten at once.</p>
+    <h2 class="lk-h2 mb-05">Export and bulk import</h2>
+    <p class="lk-muted mb-15">Export your catalog or upload a batch CSV of URLs to shorten at once.</p>
 
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+    <div class="lk-actions-bar">
       <a href="/api/links/export" class="btn btn-secondary">
         Download all links as CSV
       </a>
 
-      <label class="btn btn-primary" style="cursor: pointer;">
+      <label class="btn btn-primary">
         Import CSV
-        <input type="file" id="bulk-csv-upload" accept=".csv" style="display: none;">
+        <input type="file" id="bulk-csv-upload" accept=".csv" hidden>
       </label>
-      <span id="bulk-csv-status" style="font-size: 0.85rem; color: var(--accent-cyan);"></span>
+      <span class="lk-status" id="bulk-csv-status"></span>
     </div>
   </div>
 </div>

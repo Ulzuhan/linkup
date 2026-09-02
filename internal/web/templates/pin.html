@@ -1,40 +1,23 @@
 {{define "content"}}
-<div class="container" style="max-width: 480px; padding-top: 3rem;">
-  <div class="card" style="text-align: center;">
-    <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">This link needs a PIN</h1>
-    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">
-      Whoever shared it with you has the PIN. Attempts are limited per link, not per visitor.
-    </p>
+<div class="kc-workspace lk-public">
+  <div class="container lk-narrow-xs">
+    <div class="card lk-public-card">
+      <h1>This link needs a PIN</h1>
+      <p class="lk-public-sub">Whoever shared it with you has the PIN. Attempts are limited per link, not per visitor.</p>
 
-    {{if .Error}}
-      <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem;">
-        ⚠ {{.Error}}
-      </div>
-    {{end}}
+      {{if .Error}}
+        <div class="flash flash-err">⚠ {{.Error}}</div>
+      {{end}}
 
-    <form method="POST" action="/pin/{{.Slug}}">
-      <div class="form-group">
-        <label for="pin-input" class="form-label">PIN</label>
-        <input 
-          type="password" 
-          id="pin-input" 
-          name="pin" 
-          class="form-input mono" 
-          placeholder="••••" 
-          required 
-          autofocus 
-          style="text-align: center; font-size: 1.5rem; letter-spacing: 0.25em;"
-        >
-      </div>
-
-      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem; margin-bottom: 1rem;">
-        Unlock
-      </button>
-
-      <a href="/preview/{{.Slug}}" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem;">
-        See where it goes first
-      </a>
-    </form>
+      <form method="POST" action="/pin/{{.Slug}}">
+        <div class="form-group">
+          <label for="pin-input" class="form-label">PIN</label>
+          <input type="password" id="pin-input" name="pin" class="form-input mono lk-pin-input" placeholder="••••" required autofocus autocomplete="one-time-code" inputmode="numeric">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg lk-block mb-1">Unlock</button>
+        <a href="/preview/{{.Slug}}" class="btn btn-secondary lk-block">See where it goes first</a>
+      </form>
+    </div>
   </div>
 </div>
 {{end}}

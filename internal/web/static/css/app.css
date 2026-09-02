@@ -329,3 +329,103 @@ tr:hover td { background: #172136; }
 .lk-closing p { max-width: 36rem; margin: 1rem auto 1.75rem; color: var(--text-secondary); line-height: 1.6; }
 
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn-primary:hover { transform: none; } }
+
+/* ── What used to be inline. Every style attribute left the templates so the
+   Content-Security-Policy can say `style-src 'self'` and mean it. ───────── */
+[hidden] { display: none !important; }
+
+.tight { margin: 0; }
+.mb-05 { margin-bottom: 0.5rem; }
+.mb-1 { margin-bottom: 1rem; }
+.mb-15 { margin-bottom: 1.5rem; }
+.mb-2 { margin-bottom: 2rem; }
+.mt-02 { margin-top: 0.2rem; }
+.lk-right { text-align: right; }
+.lk-center { text-align: center; }
+.lk-block { width: 100%; }
+.lk-self-start { align-self: flex-start; }
+.lk-sm { font-size: 0.85rem; }
+.lk-accent { color: var(--accent-cyan); }
+.lk-muted { font-size: 0.85rem; color: var(--text-muted); }
+.lk-muted-sm { font-size: 0.8rem; color: var(--text-muted); }
+.lk-muted-text { color: var(--text-muted); }
+.lk-secondary { font-size: 0.85rem; color: var(--text-secondary); }
+.lk-secondary-sm { font-size: 0.8rem; color: var(--text-secondary); }
+.lk-narrow { max-width: 60rem; }
+.lk-narrow-sm { max-width: 42.5rem; }
+.lk-narrow-xs { max-width: 30rem; }
+.lk-h2 { font-size: 1.2rem; }
+
+.flash { padding: 0.9rem 1rem; border-radius: 0.6rem; margin-bottom: 1.5rem; border: 1px solid; font-size: 0.92rem; }
+.flash-ok { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+.flash-err { background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.4); color: #fda4af; }
+.flash p { margin-top: 0.25rem; }
+
+/* Create form */
+.lk-submit { width: 100%; min-height: 3rem; padding: 0.85rem; font-size: 1rem; }
+.lk-options { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.5rem 1rem; margin-bottom: 1.5rem; }
+.lk-options > summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); user-select: none; }
+.lk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+.lk-grid-wide { grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); margin-top: 0; margin-bottom: 1.25rem; }
+.lk-ab-row { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 0.5rem; }
+@media (max-width: 30rem) { .lk-ab-row { grid-template-columns: 1fr; } }
+.lk-hint { font-size: 0.8rem; color: var(--text-muted); align-self: center; }
+.lk-hr { border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+.lk-h4 { font-size: 0.95rem; margin-bottom: 0.75rem; font-weight: 600; }
+.lk-h4-indigo { color: var(--accent-indigo); }
+.lk-h4-cyan { color: var(--accent-cyan); }
+.lk-slug-group { display: flex; align-items: center; }
+.lk-slug-prefix { background: var(--bg-input); border: 1px solid var(--border); border-right: 0; padding: 0.65rem 0.6rem; min-height: 2.75rem; display: flex; align-items: center; border-radius: 0.55rem 0 0 0.55rem; font-size: 0.85rem; color: var(--text-muted); }
+.lk-slug-input { border-radius: 0 0.55rem 0.55rem 0; }
+.lk-stripper { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.6rem; padding: 1rem; margin-bottom: 1.25rem; }
+.lk-stripper-title { font-size: 0.8rem; font-weight: 600; color: var(--accent-rose); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
+
+/* Links table */
+.lk-folder-tab { gap: 0.45rem; }
+.lk-link-cell { display: flex; flex-direction: column; gap: 0.2rem; }
+.lk-link-row { display: flex; align-items: center; gap: 0.4rem; }
+.lk-link-slug { font-weight: 600; color: var(--accent-cyan); text-decoration: none; }
+.lk-link-slug:hover { text-decoration: underline; }
+.lk-pin-mini { font-size: 0.65rem; padding: 0.05rem 0.45rem; }
+.lk-tags { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.25rem; }
+.lk-tag { font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
+.lk-rule { font-size: 0.75rem; margin-top: 0.15rem; }
+.lk-rule-ios { color: var(--accent-indigo); }
+.lk-rule-android { color: var(--accent-emerald); }
+.lk-rule-ab { color: var(--accent-cyan); }
+.lk-clicks { font-weight: 600; font-size: 0.95rem; }
+.lk-clicks-max { color: var(--text-muted); font-size: 0.8rem; }
+.lk-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.lk-empty-title { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.lk-modal-link { font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 1.25rem; word-break: break-all; }
+.lk-modal-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+/* Settings */
+.lk-empty-note { font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0; }
+.lk-code-cyan { font-weight: 600; color: var(--accent-cyan); }
+.lk-cell-events { font-size: 0.8rem; color: var(--accent-indigo); }
+.lk-cell-url { font-size: 0.85rem; color: var(--text-primary); max-width: 19rem; overflow: hidden; text-overflow: ellipsis; }
+.lk-status { font-size: 0.85rem; color: var(--accent-cyan); }
+.lk-actions-bar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.lk-form-col { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+.lk-keybox { background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 0.85rem; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+.lk-keybox h3 { color: var(--accent-cyan); font-size: 1.1rem; margin-bottom: 0.5rem; }
+.lk-keybox p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.lk-key-input { background: var(--bg-primary); color: #67e8f9; font-weight: 600; }
+
+/* Public pages: preview, PIN, errors */
+.lk-public { padding-top: 2rem; }
+@media (min-width: 48rem) { .lk-public { padding-top: 3.5rem; } }
+.lk-public-card { text-align: center; padding: 1.75rem 1.25rem; }
+@media (min-width: 40rem) { .lk-public-card { padding: 2.25rem 2rem; } }
+.lk-public-card h1 { font-size: clamp(1.4rem, 4.5vw, 1.75rem); margin-bottom: 0.5rem; }
+.lk-public-sub { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.75rem; line-height: 1.55; }
+.lk-dest-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.1rem 1.25rem; text-align: left; margin-bottom: 1.25rem; }
+.lk-dest-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+.lk-dest-target { font-size: 0.95rem; color: var(--text-primary); word-break: break-all; margin-bottom: 0.75rem; }
+.lk-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.lk-stripped { background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.25); border-radius: 0.75rem; padding: 1rem; text-align: left; margin-bottom: 1.25rem; }
+.lk-stripped-title { font-size: 0.8rem; font-weight: 600; color: #fda4af; margin-bottom: 0.5rem; }
+.lk-public-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.btn-lg { min-height: 2.9rem; padding: 0.75rem 1.4rem; font-size: 1rem; }
+.lk-pin-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.25em; }

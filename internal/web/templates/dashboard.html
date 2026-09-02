@@ -17,7 +17,7 @@
     </div>
     <div class="stat-card">
       <span class="stat-label">Redirections</span>
-      <span class="stat-value" style="color: var(--accent-cyan);">{{.TotalClicks}}</span>
+      <span class="stat-value lk-accent">{{.TotalClicks}}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Smart Routing</span>
@@ -30,19 +30,19 @@
   </div>
 
   {{if .FlashSuccess}}
-    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+    <div class="flash flash-ok">
       ✓ {{.FlashSuccess}}
     </div>
   {{end}}
 
   {{if .FlashError}}
-    <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+    <div class="flash flash-err">
       ⚠ {{.FlashError}}
     </div>
   {{end}}
 
   <!-- Create New Link Card -->
-  <div class="card" style="margin-bottom: 2rem;">
+  <div class="card mb-2">
     <div class="lk-card-head">
       <h2>Shorten a link</h2>
       <span class="badge-privacy">Strips tracking parameters</span>
@@ -63,27 +63,27 @@
       </div>
 
       <!-- Live Tracking Stripper Preview Box -->
-      <div id="stripper-preview-box" style="display: none; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.25rem;">
-        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent-rose); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+      <div class="lk-stripper" id="stripper-preview-box" hidden>
+        <div class="lk-stripper-title">
           <span>Trackers detected, to be stripped:</span>
         </div>
-        <div id="stripped-tags" style="margin-bottom: 0.5rem;"></div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">
-          Stored as: <span id="clean-url-display" class="mono" style="color: var(--accent-cyan);"></span>
+        <div class="mb-05" id="stripped-tags"></div>
+        <div class="lk-muted-sm">
+          Stored as: <span id="clean-url-display" class="mono lk-accent"></span>
         </div>
       </div>
 
       <!-- Advanced Options Accordion -->
-      <details style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
-        <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); user-select: none;">
+      <details class="lk-options">
+        <summary>
           Options: PIN, expiry, domains and smart routing
         </summary>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+        <div class="lk-grid">
           {{if .CustomDomains}}
             <div class="form-group">
               <label class="form-label">Domain</label>
-              <select name="domain" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
+              <select name="domain" class="form-input">
                 <option value="">{{.DefaultDomain}} (Default)</option>
                 {{range .CustomDomains}}
                   <option value="{{.Domain}}">{{.Domain}}</option>
@@ -94,9 +94,9 @@
 
           <div class="form-group">
             <label class="form-label">Custom slug (optional)</label>
-            <div style="display: flex; align-items: center;">
-              <span class="mono" style="background: var(--bg-input); border: 1px solid var(--border); border-right: none; padding: 0.75rem 0.5rem; border-radius: 0.5rem 0 0 0.5rem; font-size: 0.85rem; color: var(--text-muted);">/</span>
-              <input type="text" name="custom_slug" class="form-input mono" placeholder="my-cool-link" style="border-radius: 0 0.5rem 0.5rem 0;">
+            <div class="lk-slug-group">
+              <span class="mono lk-slug-prefix">/</span>
+              <input type="text" name="custom_slug" class="form-input mono lk-slug-input" placeholder="my-cool-link">
             </div>
           </div>
 
@@ -108,7 +108,7 @@
           {{if .Folders}}
             <div class="form-group">
               <label class="form-label">Folder</label>
-              <select name="folder_id" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
+              <select name="folder_id" class="form-input">
                 <option value="">No Folder (General)</option>
                 {{range .Folders}}
                   <option value="{{.ID}}">{{.Name}}</option>
@@ -139,7 +139,7 @@
 
           <div class="form-group">
             <label class="form-label">Redirect code</label>
-            <select name="redirect_type" class="form-input" style="background: var(--bg-input); color: var(--text-primary);">
+            <select name="redirect_type" class="form-input">
               <option value="302" selected>302 Found (Temporary - Recommended)</option>
               <option value="301">301 Moved Permanently</option>
             </select>
@@ -147,31 +147,31 @@
         </div>
 
         <!-- Smart Conditional Routing Inputs -->
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0;">
-        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-indigo);">Routing by device</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-          <div class="form-group" style="margin: 0;">
+        <hr class="lk-hr">
+        <h4 class="lk-h4 lk-h4-indigo">Routing by device</h4>
+        <div class="lk-grid lk-grid-wide">
+          <div class="form-group tight">
             <label class="form-label">iOS target</label>
             <input type="url" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id...">
           </div>
-          <div class="form-group" style="margin: 0;">
+          <div class="form-group tight">
             <label class="form-label">Android target</label>
             <input type="url" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=...">
           </div>
         </div>
 
-        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--accent-cyan);">A/B split</h4>
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 0.5rem;">
+        <h4 class="lk-h4 lk-h4-cyan">A/B split</h4>
+        <div class="lk-ab-row">
           <input type="url" name="ab_url_a" class="form-input mono" placeholder="Variant A URL (e.g. Landing Page 1)">
           <input type="number" name="ab_weight_a" class="form-input" placeholder="Weight % (e.g. 50)" min="1" max="99">
         </div>
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+        <div class="lk-ab-row">
           <input type="url" name="ab_url_b" class="form-input mono" placeholder="Variant B URL (e.g. Landing Page 2)">
-          <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Remaining % will route to Variant B</span>
+          <span class="lk-hint">Remaining % will route to Variant B</span>
         </div>
       </details>
 
-      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+      <button type="submit" class="btn btn-primary lk-submit">
         Create clean link
       </button>
     </form>
@@ -183,7 +183,8 @@
       All Links
     </a>
     {{range .Folders}}
-      <a href="/?folder={{.ID}}" class="btn {{if eq $.CurrentFolder .ID}}btn-primary{{else}}btn-secondary{{end}} btn-sm" style="border-left: 3px solid {{.Color}};">
+      <a href="/?folder={{.ID}}" class="btn {{if eq $.CurrentFolder .ID}}btn-primary{{else}}btn-secondary{{end}} btn-sm lk-folder-tab">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="{{.Color}}"/></svg>
         {{.Name}}
       </a>
     {{end}}
@@ -194,7 +195,7 @@
   <div class="card">
     <div class="lk-card-head">
       <h2>Shortened links</h2>
-      <span style="font-size: 0.85rem; color: var(--text-muted);">{{len .Links}} links</span>
+      <span class="lk-muted">{{len .Links}} links</span>
     </div>
 
     {{if .Links}}
@@ -206,28 +207,28 @@
               <th>Clean Destination & Smart Rules</th>
               <th>Status</th>
               <th>Clicks</th>
-              <th style="text-align: right;">Actions</th>
+              <th class="lk-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {{range .Links}}
               <tr>
                 <td data-label="Link">
-                  <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                    <div style="display: flex; align-items: center; gap: 0.4rem;">
-                      <a href="/{{.Slug}}" target="_blank" class="mono" style="font-weight: 600; color: var(--accent-cyan); text-decoration: none;">
+                  <div class="lk-link-cell">
+                    <div class="lk-link-row">
+                      <a href="/{{.Slug}}" target="_blank" class="mono lk-link-slug">
                         {{if .Domain}}{{.Domain}}/{{.Slug}}{{else}}/{{.Slug}}{{end}}
                       </a>
                       {{if .HasPIN}}
-                        <span class="status-pill status-locked" style="font-size: 0.65rem; padding: 0.05rem 0.45rem;">PIN</span>
+                        <span class="status-pill status-locked lk-pin-mini">PIN</span>
                       {{end}}
                     </div>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{.Title}}</span>
+                    <span class="lk-muted-sm">{{.Title}}</span>
                     
                     {{if .Tags}}
-                      <div style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                      <div class="lk-tags">
                         {{range .Tags}}
-                          <span style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 0.1rem 0.4rem; border-radius: 0.25rem;">#{{.}}</span>
+                          <span class="lk-tag">#{{.}}</span>
                         {{end}}
                       </div>
                     {{end}}
@@ -238,17 +239,17 @@
                     {{.TargetURL}}
                   </div>
                   {{if .IOSURL}}
-                    <div style="font-size: 0.75rem; color: var(--accent-indigo); margin-top: 0.15rem;">
+                    <div class="lk-rule lk-rule-ios">
                       iOS target set
                     </div>
                   {{end}}
                   {{if .AndroidURL}}
-                    <div style="font-size: 0.75rem; color: var(--accent-emerald); margin-top: 0.15rem;">
+                    <div class="lk-rule lk-rule-android">
                       Android target set
                     </div>
                   {{end}}
                   {{if .ABVariants}}
-                    <div style="font-size: 0.75rem; color: var(--accent-cyan); margin-top: 0.15rem;">
+                    <div class="lk-rule lk-rule-ab">
                       A/B split active ({{len .ABVariants}} variants)
                     </div>
                   {{end}}
@@ -263,9 +264,9 @@
                   {{end}}
                 </td>
                 <td data-label="Clicks">
-                  <span class="mono" style="font-weight: 600; font-size: 0.95rem;">
+                  <span class="mono lk-clicks">
                     {{.ClickCount}}
-                    {{if .MaxClicks}}<span style="color: var(--text-muted); font-size: 0.8rem;">/{{.MaxClicks}}</span>{{end}}
+                    {{if .MaxClicks}}<span class="lk-clicks-max">/{{.MaxClicks}}</span>{{end}}
                   </span>
                 </td>
                 <td class="lk-actions">
@@ -310,9 +311,9 @@
         </table>
       </div>
     {{else}}
-      <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-        <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 0.5rem;">No shortened links yet</p>
-        <p style="font-size: 0.85rem;">Paste any URL above to generate your first clean, privacy-respecting short link.</p>
+      <div class="lk-empty">
+        <p class="lk-empty-title">No shortened links yet</p>
+        <p class="lk-sm">Paste any URL above to generate your first clean, privacy-respecting short link.</p>
       </div>
     {{end}}
   </div>
@@ -321,11 +322,11 @@
 
 <!-- QR Forge Modal -->
 <div id="qr-modal" class="modal-overlay">
-  <div class="modal-box" style="text-align: center;">
-    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">QR code</h3>
-    <p class="mono" id="qr-link-text" style="font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 1.25rem; word-break: break-all;"></p>
+  <div class="modal-box lk-center">
+    <h3 class="lk-h2 mb-05">QR code</h3>
+    <p class="mono lk-modal-link" id="qr-link-text"></p>
     
-    <div style="display: flex; gap: 0.75rem; justify-content: center;">
+    <div class="lk-modal-actions">
       <a id="qr-forge-direct" href="#" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
         Open in QR-Forge ↗
       </a>

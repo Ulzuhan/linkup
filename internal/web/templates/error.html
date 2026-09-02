@@ -1,15 +1,12 @@
 {{define "content"}}
-<div class="container" style="max-width: 520px; padding-top: 3rem;">
-  <div class="card" style="text-align: center;">
-    <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{.Heading}}</h1>
-    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 2rem;">
-      {{.Message}}
-    </p>
-
-    <div style="display: flex; gap: 1rem; justify-content: center;">
-      <a href="/" class="btn btn-primary">
-        Back to LinkUp
-      </a>
+<div class="kc-workspace lk-public">
+  <div class="container lk-narrow-xs">
+    <div class="card lk-public-card">
+      <h1>{{.Heading}}</h1>
+      <p class="lk-public-sub">{{.Message}}</p>
+      <div class="lk-public-actions">
+        <a href="/" class="btn btn-primary">Back to LinkUp</a>
+      </div>
     </div>
   </div>
 </div>

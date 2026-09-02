@@ -168,11 +168,10 @@ func PrivacyRespectingLogger(next http.Handler) http.Handler {
 // ways nobody can read off a single file.
 const contentSecurityPolicy = "default-src 'self'; " +
 	"script-src 'self'; " +
-	// 'unsafe-inline' is here for the 163 style= attributes spread across the
-	// templates, not for inline <script>: there are none, and script-src stays
-	// strict because of it. Moving those attributes into the stylesheet is
-	// tidying for later, and it is what removes this.
-	"style-src 'self' 'unsafe-inline'; " +
+	// No 'unsafe-inline' for styles either. The templates used to carry 163
+	// style= attributes and the policy had to allow them; they all moved into
+	// the stylesheet, and tests/web_test.go fails the moment one comes back.
+	"style-src 'self'; " +
 	"img-src 'self' data:; " +
 	"font-src 'self'; " +
 	"connect-src 'self'; " +

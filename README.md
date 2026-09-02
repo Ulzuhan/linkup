@@ -11,6 +11,8 @@ Most shorteners are surveillance with a convenience feature attached: they log
 addresses, fingerprint browsers, set cross-site cookies and sell what they
 learn. LinkUp keeps the convenience and drops the rest.
 
+![LinkUp's dashboard: the stats, the form that strips tracking parameters as you paste, and the list of links](docs/screenshots/dashboard.png)
+
 ## What "privacy-first" means here, precisely
 
 Vague promises are worthless, so here is the exact shape of it:

@@ -3,6 +3,21 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] — 2026-09-02
+
+### Changed
+
+- **The Content-Security-Policy no longer allows inline styles.** The
+  templates carried 163 `style=` attributes and the policy had to say
+  `'unsafe-inline'` for them; every one moved into the stylesheet, the one
+  piece of data that used to travel in a style attribute — a folder's colour —
+  is an SVG fill now, and the box the script used to show and hide goes by the
+  `hidden` attribute. A test renders every page with a link that has a PIN,
+  tags and a folder and fails on the first inline style that comes back.
+- **The public pages — where a link goes, the PIN, the errors — are composed
+  like the rest**: same workspace, same card, no emoji medallions.
+- The README shows the dashboard.
+
 ## [0.2.1] — 2026-09-02
 
 ### Fixed

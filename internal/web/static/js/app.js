@@ -24,7 +24,7 @@ function setupLiveCleanerPreview() {
     clearTimeout(debounceTimer);
     const val = e.target.value.trim();
     if (!val || val.length < 5) {
-      previewBox.style.display = 'none';
+      previewBox.hidden = true;
       return;
     }
 
@@ -39,13 +39,13 @@ function setupLiveCleanerPreview() {
         const data = await res.json();
         
         if (data.stripped_params && data.stripped_params.length > 0) {
-          previewBox.style.display = 'block';
+          previewBox.hidden = false;
           strippedTags.innerHTML = data.stripped_params.map(p => 
             `<span class="tracker-badge">✂️ ${escapeHtml(p)}</span>`
           ).join('');
           cleanUrlDisplay.textContent = data.clean_url;
         } else {
-          previewBox.style.display = 'none';
+          previewBox.hidden = true;
         }
       } catch (err) {
         console.error('Preview error:', err);

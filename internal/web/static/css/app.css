@@ -1,5 +1,23 @@
 /* KaiCorp Sovereign Design System - LinkUp */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+/* Self-hosted, and not for speed.
+ *
+ * The @import that used to be here made every visitor's browser fetch fonts
+ * from Google on every page of a product whose entire argument is that it does
+ * not send them anywhere. It is the same class of leak as the analytics this
+ * tool exists to strip, and it was in the first line of the stylesheet.
+ *
+ * The six files ship inside the binary via //go:embed. Weights 600 and 700 of
+ * Inter that the import asked for fall back to 500; nothing in the interface
+ * notices. */
+/* Three files, six declarations. Each pair the landing ships under two names is
+ * byte-for-byte the same variable font, so shipping it twice would put 100 KB of
+ * duplicate into the binary for nothing. */
+@font-face { font-family: "Space Grotesk"; src: url("/static/fonts/spacegrotesk.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url("/static/fonts/spacegrotesk.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/static/fonts/inter.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("/static/fonts/inter.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/static/fonts/jetbrainsmono.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/static/fonts/jetbrainsmono.woff2") format("woff2"); font-weight: 500; font-display: swap; }
 
 :root {
   --bg-primary: #0a0d14;

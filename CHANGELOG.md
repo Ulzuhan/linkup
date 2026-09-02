@@ -3,7 +3,55 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.2] — 2026-09-02
+
+### Fixed
+
+- **The site was served without styles.** Every `/static/*` request answered 404:
+  `StaticFS` hangs off a sub-FS already rooted at `static`, so without
+  `StripPrefix` the file server looked for `static/css/app.css` inside `static/`.
+  The dashboard rendered unstyled, the health check passed and nothing failed
+  loudly, which is how it reached production. Covered by a test that goes
+  through the real router, because the bug was in how the handler was mounted.
+
+### Security
+
+- **Security headers now travel with the application**: Content-Security-Policy,
+  Referrer-Policy, Permissions-Policy, and `X-Frame-Options: DENY`. A
+  self-hosted copy gets the same protection as ours without knowing they exist.
+  `X-XSS-Protection` is gone — obsolete, ignored, and harmful in the browsers
+  that honoured it.
+
+### Changed
+
+- **Fonts are self-hosted.** The stylesheet's first line fetched them from
+  Google on every page load, in a product whose argument is that it sends
+  visitors nowhere. The three variable fonts ship inside the binary.
+- **The QR preview no longer calls a third party.** It was fetched from
+  `api.qrserver.com` with the short URL in the query string, handing away the
+  one thing this product keeps. The button opens the operator's own QR-Forge.
+
+## [0.1.1] — 2026-09-02
+
+### Fixed
+
+- The OIDC variable held the discovery document rather than the issuer, so the
+  library appended `/.well-known/openid-configuration` to a URL that already
+  ended in it and sign-in failed at the first step. Both variable names are
+  accepted and the suffix is trimmed.
+- Declares the Go version the module actually needs. `go.mod` asked for 1.27
+  while the Dockerfile pinned 1.24; outside a container Go silently downloads
+  the toolchain a module asks for, so CI never disagreed and the image build
+  died the first time it ran.
+
+### Added
+
+- `LINKUP_OIDC_INTERNAL_BASE`, so server-to-server calls to the provider do not
+  have to leave the host and come back.
+
+## [0.1.0] — 2026-09-01
+
+First release.
 
 ### Security
 

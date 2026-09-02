@@ -31,8 +31,14 @@ func NewRouter(
 	r.Use(PrivacyRespectingLogger)
 	r.Use(SecurityHeaders)
 
-	// Static Assets (/static/*)
-	r.Handle("/static/*", web.StaticFS())
+	// Static assets.
+	//
+	// StripPrefix is not optional: StaticFS hangs off a sub-FS already rooted at
+	// "static", so without it the FileServer looks for static/css/app.css INSIDE
+	// static/ and answers 404 to every stylesheet and script. The page still
+	// renders — unstyled — so nothing fails loudly and no test that exercises
+	// handlers notices. It shipped that way.
+	r.Handle("/static/*", http.StripPrefix("/static/", web.StaticFS()))
 
 	// Health Check
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -152,11 +158,41 @@ func PrivacyRespectingLogger(next http.Handler) http.Handler {
 }
 
 // SecurityHeaders applies essential security headers
+// The security headers travel with the application, not with whatever proxy
+// happens to be in front of it.
+//
+// This is a self-hostable product: someone running it behind their own Caddy
+// gets the same protection as the instance we run, without having to know these
+// exist. Two intersecting policies from two places would also be worse than one
+// from here — a header set at the edge and another set here narrow each other in
+// ways nobody can read off a single file.
+const contentSecurityPolicy = "default-src 'self'; " +
+	"script-src 'self'; " +
+	// 'unsafe-inline' is here for the 163 style= attributes spread across the
+	// templates, not for inline <script>: there are none, and script-src stays
+	// strict because of it. Moving those attributes into the stylesheet is
+	// tidying for later, and it is what removes this.
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data:; " +
+	"font-src 'self'; " +
+	"connect-src 'self'; " +
+	"form-action 'self'; " +
+	"base-uri 'none'; " +
+	"frame-ancestors 'none'"
+
 func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		// DENY rather than SAMEORIGIN: nothing here is meant to be framed, and
+		// frame-ancestors 'none' above says the same to browsers that read CSP.
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy",
+			"camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+		// X-XSS-Protection is deliberately absent. It is obsolete, browsers
+		// ignore it, and in the versions that did not it introduced its own
+		// vulnerabilities. CSP is what does this job now.
 		next.ServeHTTP(w, r)
 	})
 }

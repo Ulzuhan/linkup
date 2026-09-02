@@ -3,6 +3,18 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] — 2026-09-02
+
+### Fixed
+
+- **The site could look unstyled for hours after a deploy.** The stylesheet
+  changed behind the same address and nothing here said how long it could be
+  kept, so the CDN in front served the previous version for its default four
+  hours while the new pages asked for classes it did not have. Assets now carry
+  the build's digest in their URL — a new build is a new address — and answer
+  with cache headers to match: versioned files are immutable, anything else
+  lives a day.
+
 ## [0.2.0] — 2026-09-02
 
 ### Added

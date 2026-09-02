@@ -69,6 +69,7 @@ func main() {
 		"AccountURL":    cfg.AccountURL,
 		"QRForgeURL":    cfg.QRForgeURL,
 		"DefaultDomain": cfg.DefaultDomain,
+		"AssetVersion":  web.AssetVersion(),
 	})
 
 	// 6. Build HTTP Router

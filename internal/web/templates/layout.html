@@ -6,9 +6,9 @@
   <title>{{if .Title}}{{.Title}} · {{end}}LinkUp · KaiCorp Labs</title>
   <meta name="description" content="Short links that strip the tracking parameters and keep the ones the page needs. No visitor address, User-Agent or referrer is ever stored.">
   <meta name="color-scheme" content="dark">
-  <link rel="stylesheet" href="/static/css/kaicorp.css">
-  <link rel="stylesheet" href="/static/css/landing-polish.css">
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/kaicorp.css?v={{.AssetVersion}}">
+  <link rel="stylesheet" href="/static/css/landing-polish.css?v={{.AssetVersion}}">
+  <link rel="stylesheet" href="/static/css/app.css?v={{.AssetVersion}}">
   <link rel="icon" href="/static/kaicorp-mark.png" type="image/png">
 </head>
 <body>
@@ -73,6 +73,6 @@
     <p class="kc-footer-tagline"><strong>LinkUp</strong> · Sovereign, privacy-first redirect infrastructure. No visitor address is read, logged or hashed.</p>
   </footer>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{.AssetVersion}}"></script>
 </body>
 </html>

@@ -51,6 +51,7 @@ func setupPublicServer(t *testing.T) (http.Handler, func()) {
 		"ProviderName": "your provider",
 		"FooterLinks":  cfg.FooterLinks,
 		"EnrollURL":    cfg.EnrollURL,
+		"AssetVersion": web.AssetVersion(),
 	})
 	router := handlers.NewRouter(
 		cfg, linkService, services.NewDomainService(db), services.NewFolderService(db),
@@ -88,6 +89,29 @@ func TestThemeAssetsAreServed(t *testing.T) {
 		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, wantType) {
 			t.Errorf("%s: content-type %q, want it to contain %q", path, ct, wantType)
 		}
+	}
+}
+
+// A new build is a new address for the stylesheet, and the cache headers
+// match: versioned is immutable, anything else is short-lived.
+func TestAssetsAreVersionedAndCacheable(t *testing.T) {
+	h, done := setupPublicServer(t)
+	defer done()
+	v := web.AssetVersion()
+	if len(v) != 12 {
+		t.Fatalf("asset version %q, want 12 hex characters", v)
+	}
+	body := get(t, h, "/").Body.String()
+	for _, want := range []string{"/static/css/app.css?v=" + v, "/static/js/app.js?v=" + v} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page does not reference %q", want)
+		}
+	}
+	if cc := get(t, h, "/static/css/app.css?v="+v).Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
+		t.Errorf("versioned asset Cache-Control %q, want immutable", cc)
+	}
+	if cc := get(t, h, "/static/css/app.css").Header().Get("Cache-Control"); strings.Contains(cc, "immutable") || cc == "" {
+		t.Errorf("unversioned asset Cache-Control %q, want a short lifetime", cc)
 	}
 }
 

@@ -126,7 +126,9 @@ func TestElPanelPideSuPropioQR(t *testing.T) {
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 	cuerpo := rec.Body.String()
 
-	for _, trozo := range []string{`id="qr-image"`, `id="qr-png"`, "data-id="} {
+	// El botón de QR-Forge es condicional: un autoalojado sin instancia no debe
+	// ver un enlace a la nuestra. Aquí la configuración de pruebas sí la tiene.
+	for _, trozo := range []string{`id="qr-image"`, `id="qr-png"`, "data-id=", "Design in QR-Forge"} {
 		if !strings.Contains(cuerpo, trozo) {
 			t.Errorf("falta %q en el panel", trozo)
 		}

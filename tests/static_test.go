@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Ulzuhan/linkup/internal/models"
 )
 
 // The regression test for the 404 that shipped.
@@ -99,5 +101,37 @@ func TestSecurityHeadersTravelWithTheApplication(t *testing.T) {
 	// that honoured it. CSP does this job now.
 	if rec.Header().Get("X-XSS-Protection") != "" {
 		t.Error("X-XSS-Protection should be gone")
+	}
+}
+
+// Las páginas públicas —vista previa, PIN, error— comparten el layout con el
+// panel, así que reciben `User` aunque no lo usen para decidir nada: sin él, el
+// layout no puede pintar la cabecera y quien está dentro ve un botón de
+// «entrar», como si la sesión se hubiera caído. Pasó con la vista previa el
+// 02-09.
+func TestPaginasPublicasRecibenCabecera(t *testing.T) {
+	router, links, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	if _, _, err := links.Create(models.CreateLinkRequest{
+		URL:        "https://example.com/publico",
+		CustomSlug: "cabecera",
+	}, "ana"); err != nil {
+		t.Fatalf("no se pudo crear el enlace: %v", err)
+	}
+
+	for _, path := range []string{"/preview/cabecera", "/no-existe-en-absoluto"} {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+
+		cuerpo := rec.Body.String()
+		if cuerpo == "" {
+			t.Errorf("%s no devolvió cuerpo: el layout se rompió al pintar", path)
+			continue
+		}
+		// La marca del layout: si está, la plantilla se renderizó entera.
+		if !strings.Contains(cuerpo, "</html>") {
+			t.Errorf("%s se cortó a medias, que es lo que pasa cuando falta un dato del layout", path)
+		}
 	}
 }

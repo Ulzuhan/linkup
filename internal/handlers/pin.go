@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/Ulzuhan/linkup/internal/services"
 	"github.com/Ulzuhan/linkup/internal/web"
 	"github.com/go-chi/chi/v5"
@@ -20,15 +21,37 @@ type PinHandler struct {
 	// an address, and this product does not look at addresses. The link is the
 	// thing being attacked anyway, so it is the right thing to protect.
 	guard *services.PINGuard
+	// Igual que en la vista previa: sólo para la cabecera. La página del PIN es
+	// pública por definición —quien la ve es justo quien no tiene por qué tener
+	// cuenta— pero el dueño del enlace que llega desde su panel no debería ver
+	// un botón de «entrar» estando dentro.
+	authService   *services.AuthService
+	apiKeyService *services.APIKeyService
 }
 
-func NewPinHandler(cfg *config.Config, linkService *services.LinkService, renderer *web.Renderer) *PinHandler {
+func NewPinHandler(
+	cfg *config.Config,
+	linkService *services.LinkService,
+	renderer *web.Renderer,
+	authService *services.AuthService,
+	apiKeyService *services.APIKeyService,
+) *PinHandler {
 	return &PinHandler{
-		cfg:         cfg,
-		linkService: linkService,
-		renderer:    renderer,
-		guard:       services.NewPINGuard(5, 15*time.Minute),
+		cfg:           cfg,
+		linkService:   linkService,
+		renderer:      renderer,
+		guard:         services.NewPINGuard(5, 15*time.Minute),
+		authService:   authService,
+		apiKeyService: apiKeyService,
 	}
+}
+
+// cabecera: la sesión si la hay, vacía si no. Vacía es un estado válido.
+func (h *PinHandler) cabecera(r *http.Request) models.UserSession {
+	if s := getAuthSession(r, h.authService, h.apiKeyService); s != nil {
+		return *s
+	}
+	return models.UserSession{}
 }
 
 // ShowForm handles GET /pin/:slug
@@ -49,6 +72,7 @@ func (h *PinHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	if link.IsExpired() {
 		w.WriteHeader(http.StatusGone)
 		_ = h.renderer.Render(w, "error.html", map[string]interface{}{
+			"User":       h.cabecera(r),
 			"Title":      "Link Expired",
 			"Heading":    "410 - Link Expired",
 			"Message":    link.ExpiryReason(),
@@ -59,6 +83,7 @@ func (h *PinHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.renderer.Render(w, "pin.html", map[string]interface{}{
+		"User":       h.cabecera(r),
 		"Title":      "Enter PIN - " + slug,
 		"Slug":       slug,
 		"QRForgeURL": h.cfg.QRForgeURL,
@@ -83,6 +108,7 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	if link.IsExpired() {
 		w.WriteHeader(http.StatusGone)
 		_ = h.renderer.Render(w, "error.html", map[string]interface{}{
+			"User":       h.cabecera(r),
 			"Title":      "Link Expired",
 			"Heading":    "410 - Link Expired",
 			"Message":    link.ExpiryReason(),
@@ -97,6 +123,7 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	if locked, remaining := h.guard.Locked(link.ID); locked {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_ = h.renderer.Render(w, "pin.html", map[string]interface{}{
+			"User":       h.cabecera(r),
 			"Title":      "Enter PIN - " + slug,
 			"Slug":       slug,
 			"Error":      "Too many attempts on this link. Try again in " + humanWait(remaining) + ".",
@@ -114,6 +141,7 @@ func (h *PinHandler) Verify(w http.ResponseWriter, r *http.Request) {
 		h.guard.Failed(link.ID)
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = h.renderer.Render(w, "pin.html", map[string]interface{}{
+			"User":       h.cabecera(r),
 			"Title":      "Enter PIN - " + slug,
 			"Slug":       slug,
 			"Error":      "Incorrect PIN code. Please try again.",

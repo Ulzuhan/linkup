@@ -3,6 +3,17 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] — 2026-09-02
+
+### Fixed
+
+- **The preview page showed a signed-out header to someone who was signed in.**
+  It passed an empty session to the template on purpose — the page is public and
+  always will be — but that also decides what the header draws, so arriving from
+  your own dashboard looked like the session had dropped. The PIN and error
+  pages had the same omission. Reading the session there decides nothing about
+  access; it decides whose name appears in the corner.
+
 ## [0.1.4] — 2026-09-02
 
 ### Fixed

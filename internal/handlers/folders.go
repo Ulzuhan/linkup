@@ -60,6 +60,26 @@ func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusCreated, folder)
 }
 
+// Update handles PATCH /api/folders/{id}: rename or recolour.
+func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
+	session := getAuthSession(r, h.authService, h.apiKeyService)
+	if session == nil {
+		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+	var req models.UpdateFolderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		return
+	}
+	folder, err := h.folderService.Update(chi.URLParam(r, "id"), req, session.Username, session.IsAdmin)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	sendJSON(w, http.StatusOK, folder)
+}
+
 func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	session := getAuthSession(r, h.authService, h.apiKeyService)
 	if session == nil {

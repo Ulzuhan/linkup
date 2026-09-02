@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupQRModal();
   setupDeleteHandlers();
   setupFolderCreation();
+  setupFolderManagement();
+  setupEditModal();
   setupSettingsHandlers();
   setupBulkCSVUpload();
 });
@@ -255,3 +257,144 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') document.querySelectorAll('details.kc-account[open]').forEach((d) => d.removeAttribute('open'));
 });
+
+// Renaming and deleting the folder that is currently selected. Deleting a
+// folder never deletes a link: the links go back to "All links", and the
+// confirmation says so, because that is the question everybody asks.
+function setupFolderManagement() {
+  const renameBtn = document.getElementById('rename-folder-btn');
+  const deleteBtn = document.getElementById('delete-folder-btn');
+
+  if (renameBtn) {
+    renameBtn.addEventListener('click', async () => {
+      const id = renameBtn.getAttribute('data-id');
+      const current = renameBtn.getAttribute('data-name') || '';
+      const name = prompt('New name for this folder:', current);
+      if (!name || !name.trim() || name.trim() === current) return;
+      try {
+        const res = await fetch(`/api/folders/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim() })
+        });
+        if (res.ok) window.location.reload();
+        else alert((await res.json()).error || 'Could not rename the folder');
+      } catch (err) {
+        alert('Network error while renaming the folder');
+      }
+    });
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      const id = deleteBtn.getAttribute('data-id');
+      const name = deleteBtn.getAttribute('data-name') || 'this folder';
+      const count = document.querySelectorAll('.delete-link-btn').length;
+      const links = count === 1 ? '1 link' : `${count} links`;
+      if (!confirm(`Delete the folder "${name}"?\n\nIts ${links} are kept and go back to All links. Only the folder goes.`)) return;
+      try {
+        const res = await fetch(`/api/folders/${id}`, { method: 'DELETE' });
+        if (res.ok) window.location.href = '/';
+        else alert((await res.json()).error || 'Could not delete the folder');
+      } catch (err) {
+        alert('Network error while deleting the folder');
+      }
+    });
+  }
+}
+
+// The edit dialog: everything about a link except its address. Moving a link
+// between folders is just another field here.
+function setupEditModal() {
+  const modal = document.getElementById('edit-modal');
+  const form = document.getElementById('edit-form');
+  if (!modal || !form) return;
+
+  const field = (id) => document.getElementById(id);
+  const errorBox = field('edit-error');
+  const pinRemoveRow = field('edit-pin-remove-row');
+  const close = () => { modal.classList.remove('active'); errorBox.hidden = true; };
+
+  const toLocalInput = (unix) => {
+    if (!unix) return '';
+    const d = new Date(unix * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  document.querySelectorAll('.edit-link-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      try {
+        const res = await fetch(`/api/links/${id}`);
+        if (!res.ok) { alert('Could not load this link'); return; }
+        const link = await res.json();
+        field('edit-id').value = link.id;
+        field('edit-slug').textContent = (link.domain ? link.domain : '') + '/' + link.slug;
+        field('edit-url').value = link.target_url || '';
+        field('edit-title').value = link.title || '';
+        field('edit-folder').value = link.folder_id || '';
+        field('edit-tags').value = (link.tags || []).join(', ');
+        field('edit-redirect').value = String(link.redirect_type || 302);
+        field('edit-pin').value = '';
+        field('edit-pin').placeholder = link.has_pin ? 'Unchanged — type a new one to replace it' : 'No PIN';
+        field('edit-pin-remove').checked = false;
+        pinRemoveRow.hidden = !link.has_pin;
+        field('edit-expires').value = toLocalInput(link.expires_at);
+        field('edit-max-clicks').value = link.max_clicks || '';
+        field('edit-active').checked = link.is_active !== false;
+        field('edit-ios').value = link.ios_url || '';
+        field('edit-android').value = link.android_url || '';
+        errorBox.hidden = true;
+        modal.classList.add('active');
+        field('edit-url').focus();
+      } catch (err) {
+        alert('Network error while loading the link');
+      }
+    });
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = field('edit-id').value;
+    const body = {
+      target_url: field('edit-url').value.trim(),
+      title: field('edit-title').value.trim(),
+      folder_id: field('edit-folder').value,
+      tags: field('edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+      redirect_type: parseInt(field('edit-redirect').value, 10),
+      max_clicks: parseInt(field('edit-max-clicks').value, 10) || 0,
+      is_active: field('edit-active').checked,
+      ios_url: field('edit-ios').value.trim(),
+      android_url: field('edit-android').value.trim(),
+    };
+    const expires = field('edit-expires').value;
+    body.expires_at = expires ? Math.floor(new Date(expires).getTime() / 1000) : 0;
+    if (field('edit-pin-remove').checked) body.pin = '';
+    else if (field('edit-pin').value.trim()) body.pin = field('edit-pin').value.trim();
+
+    const save = field('edit-save');
+    save.disabled = true;
+    try {
+      const res = await fetch(`/api/links/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) { window.location.reload(); return; }
+      const data = await res.json().catch(() => ({}));
+      errorBox.textContent = data.error || 'Could not save the changes';
+      errorBox.hidden = false;
+    } catch (err) {
+      errorBox.textContent = 'Network error while saving';
+      errorBox.hidden = false;
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  field('edit-cancel').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('active')) close(); });
+}
+

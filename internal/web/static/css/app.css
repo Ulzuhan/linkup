@@ -426,3 +426,14 @@ tr:hover td { background: #172136; }
 .lk-public-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 .btn-lg { min-height: 2.9rem; padding: 0.75rem 1.4rem; font-size: 1rem; }
 .lk-pin-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.25em; }
+
+/* Managing links and folders */
+.lk-tabs-gap { flex: 0 0 0.5rem; border-left: 1px solid var(--border); height: 1.5rem; margin-left: 0.25rem; }
+.lk-danger-text { color: #fda4af; }
+.lk-danger-text:hover { background: rgba(244, 63, 94, 0.12); color: #fda4af; }
+.lk-modal-wide { max-width: 44rem; max-height: calc(100svh - 2rem); overflow-y: auto; }
+.lk-grid-top { margin-top: 0; margin-bottom: 1.25rem; }
+.lk-check-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; min-height: 2.25rem; }
+.lk-modal-actions-end { justify-content: flex-end; margin-top: 0.5rem; }
+.modal-box .lk-options { margin-bottom: 1rem; }
+input[type="datetime-local"].form-input { color-scheme: dark; }

@@ -351,7 +351,19 @@ func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username s
 	}
 
 	if req.FolderID != nil {
-		link.FolderID = req.FolderID
+		// "" means no folder. Anything else has to be a folder of this
+		// person's: a folder id is not a secret, and moving a link into
+		// somebody else's folder would make it appear in their view.
+		if id := strings.TrimSpace(*req.FolderID); id == "" {
+			link.FolderID = nil
+		} else {
+			var owner string
+			err := s.db.QueryRow(`SELECT created_by FROM folders WHERE id = ?`, id).Scan(&owner)
+			if err != nil || (!isAdmin && owner != username) {
+				return nil, fmt.Errorf("folder not found")
+			}
+			link.FolderID = &id
+		}
 	}
 
 	if req.Tags != nil {
@@ -372,23 +384,61 @@ func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username s
 		}
 	}
 
-	if req.ExpiresAt != nil {
-		link.ExpiresAt = req.ExpiresAt
+	if req.ExpiresInHours != nil {
+		if *req.ExpiresInHours > 0 {
+			t := time.Now().Add(time.Duration(*req.ExpiresInHours) * time.Hour).Unix()
+			link.ExpiresAt = &t
+		} else {
+			link.ExpiresAt = nil
+		}
+	} else if req.ExpiresAt != nil {
+		if *req.ExpiresAt > 0 {
+			link.ExpiresAt = req.ExpiresAt
+		} else {
+			link.ExpiresAt = nil
+		}
 	}
 
 	if req.MaxClicks != nil {
-		link.MaxClicks = req.MaxClicks
+		if *req.MaxClicks > 0 {
+			link.MaxClicks = req.MaxClicks
+		} else {
+			link.MaxClicks = nil
+		}
+	}
+
+	if req.RedirectType != nil {
+		if *req.RedirectType != 301 && *req.RedirectType != 302 {
+			return nil, fmt.Errorf("redirect type must be 301 or 302")
+		}
+		link.RedirectType = *req.RedirectType
 	}
 
 	if req.IsActive != nil {
 		link.IsActive = *req.IsActive
 	}
 
+	// The per-device targets go through the same cleaner as the main one;
+	// an empty string clears them.
 	if req.IOSURL != nil {
-		link.IOSURL = *req.IOSURL
+		link.IOSURL = ""
+		if u := strings.TrimSpace(*req.IOSURL); u != "" {
+			c, _, err := CleanURL(u, s.ownHost)
+			if err != nil {
+				return nil, fmt.Errorf("iOS target: %w", err)
+			}
+			link.IOSURL = c
+		}
 	}
 	if req.AndroidURL != nil {
-		link.AndroidURL = *req.AndroidURL
+		link.AndroidURL = ""
+		if u := strings.TrimSpace(*req.AndroidURL); u != "" {
+			c, _, err := CleanURL(u, s.ownHost)
+			if err != nil {
+				return nil, fmt.Errorf("Android target: %w", err)
+			}
+			link.AndroidURL = c
+		}
 	}
 	if req.LocaleRouting != nil {
 		link.LocaleRouting = *req.LocaleRouting
@@ -404,7 +454,7 @@ func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username s
 	variantsJSON, _ := json.Marshal(link.ABVariants)
 
 	query := `UPDATE links SET target_url = ?, title = ?, folder_id = ?, tags = ?, pin_hash = ?, 
-		expires_at = ?, max_clicks = ?, is_active = ?, ios_url = ?, android_url = ?, locale_routing = ?, ab_variants = ?, updated_at = ? WHERE id = ?`
+		expires_at = ?, max_clicks = ?, is_active = ?, ios_url = ?, android_url = ?, locale_routing = ?, ab_variants = ?, redirect_type = ?, updated_at = ? WHERE id = ?`
 	activeInt := 0
 	if link.IsActive {
 		activeInt = 1
@@ -413,7 +463,7 @@ func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username s
 	_, err = s.db.Exec(query,
 		link.TargetURL, link.Title, link.FolderID, string(tagsJSON), link.PinHash,
 		link.ExpiresAt, link.MaxClicks, activeInt, link.IOSURL, link.AndroidURL,
-		string(localeJSON), string(variantsJSON), link.UpdatedAt, link.ID,
+		string(localeJSON), string(variantsJSON), link.RedirectType, link.UpdatedAt, link.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update link: %w", err)

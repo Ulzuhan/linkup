@@ -91,13 +91,17 @@ type CreateLinkRequest struct {
 }
 
 type UpdateLinkRequest struct {
-	TargetURL     *string            `json:"target_url,omitempty"`
-	Title         *string            `json:"title,omitempty"`
-	FolderID      *string            `json:"folder_id,omitempty"`
-	Tags          *[]string          `json:"tags,omitempty"`
-	PIN           *string            `json:"pin,omitempty"` // "" means remove PIN, non-empty means update
-	ExpiresAt     *int64             `json:"expires_at,omitempty"`
+	TargetURL *string   `json:"target_url,omitempty"`
+	Title     *string   `json:"title,omitempty"`
+	FolderID  *string   `json:"folder_id,omitempty"`
+	Tags      *[]string `json:"tags,omitempty"`
+	PIN       *string   `json:"pin,omitempty"` // "" means remove PIN, non-empty means update
+	// Expiry: either an absolute time or hours from now. Zero clears it.
+	ExpiresAt      *int64 `json:"expires_at,omitempty"`
+	ExpiresInHours *int   `json:"expires_in_hours,omitempty"`
+	// Zero clears the budget.
 	MaxClicks     *int               `json:"max_clicks,omitempty"`
+	RedirectType  *int               `json:"redirect_type,omitempty"` // 301 or 302
 	IsActive      *bool              `json:"is_active,omitempty"`
 	IOSURL        *string            `json:"ios_url,omitempty"`
 	AndroidURL    *string            `json:"android_url,omitempty"`

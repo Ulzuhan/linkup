@@ -114,6 +114,7 @@ func NewRouter(
 		// Folders
 		r.Get("/folders", folderHandler.List)
 		r.Post("/folders", folderHandler.Create)
+		r.Patch("/folders/{id}", folderHandler.Update)
 		r.Delete("/folders/{id}", folderHandler.Delete)
 
 		// API Keys

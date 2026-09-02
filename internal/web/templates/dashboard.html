@@ -188,7 +188,12 @@
         {{.Name}}
       </a>
     {{end}}
-    <button id="add-folder-btn" class="btn btn-secondary btn-sm">+ New Folder</button>
+    <button id="add-folder-btn" class="btn btn-secondary btn-sm">+ New folder</button>
+    {{range .Folders}}{{if eq $.CurrentFolder .ID}}
+      <span class="lk-tabs-gap" aria-hidden="true"></span>
+      <button class="btn btn-ghost btn-sm" id="rename-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}">Rename</button>
+      <button class="btn btn-ghost btn-sm lk-danger-text" id="delete-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}">Delete folder</button>
+    {{end}}{{end}}
   </div>
 
   <!-- Links Table -->
@@ -294,6 +299,13 @@
                     >
                       QR
                     </button>
+                    <button
+                      class="btn btn-secondary btn-sm edit-link-btn"
+                      data-id="{{.ID}}"
+                      title="Edit link"
+                    >
+                      Edit
+                    </button>
                     <button 
                       class="btn btn-danger btn-sm delete-link-btn" 
                       data-id="{{.ID}}" 
@@ -333,5 +345,85 @@
       <button id="qr-modal-close" class="btn btn-secondary btn-sm">Close</button>
     </div>
   </div>
+</div>
+
+<!-- Edit link -->
+<div id="edit-modal" class="modal-overlay">
+  <form id="edit-form" class="modal-box lk-modal-wide" novalidate>
+    <div class="lk-card-head">
+      <h3 class="lk-h2">Edit <span class="mono lk-accent" id="edit-slug"></span></h3>
+      <span class="lk-muted">The short address does not change.</span>
+    </div>
+    <input type="hidden" name="id" id="edit-id">
+
+    <div class="form-group">
+      <label for="edit-url" class="form-label">Destination URL</label>
+      <input type="text" id="edit-url" name="target_url" class="form-input mono" required autocomplete="off">
+    </div>
+
+    <div class="lk-grid lk-grid-top">
+      <div class="form-group tight">
+        <label for="edit-title" class="form-label">Title</label>
+        <input type="text" id="edit-title" name="title" class="form-input">
+      </div>
+      <div class="form-group tight">
+        <label for="edit-folder" class="form-label">Folder</label>
+        <select id="edit-folder" name="folder_id" class="form-input">
+          <option value="">No folder</option>
+          {{range .Folders}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div class="form-group tight">
+        <label for="edit-tags" class="form-label">Tags (comma-separated)</label>
+        <input type="text" id="edit-tags" name="tags" class="form-input">
+      </div>
+      <div class="form-group tight">
+        <label for="edit-redirect" class="form-label">Redirect code</label>
+        <select id="edit-redirect" name="redirect_type" class="form-input">
+          <option value="302">302 Found (temporary)</option>
+          <option value="301">301 Moved permanently</option>
+        </select>
+      </div>
+      <div class="form-group tight">
+        <label for="edit-pin" class="form-label">PIN</label>
+        <input type="password" id="edit-pin" name="pin" class="form-input mono" autocomplete="new-password" placeholder="No PIN">
+        <label class="lk-check-row" id="edit-pin-remove-row" hidden><input type="checkbox" id="edit-pin-remove"> <span>Remove the PIN</span></label>
+      </div>
+      <div class="form-group tight">
+        <label for="edit-expires" class="form-label">Expires</label>
+        <input type="datetime-local" id="edit-expires" name="expires" class="form-input">
+        <span class="lk-muted-sm">Empty means never.</span>
+      </div>
+      <div class="form-group tight">
+        <label for="edit-max-clicks" class="form-label">Click budget</label>
+        <input type="number" id="edit-max-clicks" name="max_clicks" class="form-input" min="0" placeholder="0 = unlimited">
+      </div>
+      <div class="form-group tight">
+        <label class="form-label">State</label>
+        <label class="lk-check-row"><input type="checkbox" id="edit-active" checked> <span>Active. Unticked, the link answers as expired.</span></label>
+      </div>
+    </div>
+
+    <details class="lk-options">
+      <summary>Routing by device</summary>
+      <div class="lk-grid">
+        <div class="form-group tight">
+          <label for="edit-ios" class="form-label">iOS target</label>
+          <input type="url" id="edit-ios" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id…">
+        </div>
+        <div class="form-group tight">
+          <label for="edit-android" class="form-label">Android target</label>
+          <input type="url" id="edit-android" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=…">
+        </div>
+      </div>
+    </details>
+
+    <p class="flash flash-err" id="edit-error" hidden></p>
+
+    <div class="lk-modal-actions lk-modal-actions-end">
+      <button type="button" id="edit-cancel" class="btn btn-secondary">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="edit-save">Save changes</button>
+    </div>
+  </form>
 </div>
 {{end}}

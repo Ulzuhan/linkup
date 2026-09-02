@@ -3,6 +3,29 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-09-02
+
+### Added
+
+- **Links can be edited.** An Edit button on every link opens a dialog with
+  everything but the address: destination (cleaned again on save), title,
+  folder, tags, redirect code, PIN — set a new one or remove it —, expiry, click
+  budget, whether the link is active, and the per-device targets. Moving a
+  link between folders is the folder field of that dialog.
+- **Folders can be renamed and deleted.** With a folder selected, Rename and
+  Delete folder appear next to the tabs. Deleting a folder never deletes a
+  link: its links go back to All links, in the same transaction, and the
+  confirmation says so.
+- `PATCH /api/folders/{id}` renames or recolours a folder.
+
+### Changed
+
+- `PATCH /api/links/{id}` now takes `expires_in_hours` and `redirect_type`,
+  treats zero as "clear" for the click budget and the expiry, cleans the iOS
+  and Android targets like the main one, and refuses a folder that is not
+  yours — a folder id is not a secret, and a link moved into somebody else's
+  folder would appear in their view.
+
 ## [0.2.3] — 2026-09-02
 
 ### Changed

@@ -3,6 +3,14 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-09-02
+
+### Changed
+
+- The sign-in button no longer names a specific identity product. It said
+  "Login with Authentik", which is right for one deployment and wrong for every
+  other; `LINKUP_OIDC_PROVIDER_NAME` decides, defaulting to "your provider".
+
 ## [0.1.2] — 2026-09-02
 
 ### Fixed

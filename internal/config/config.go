@@ -18,6 +18,7 @@ type Config struct {
 	OIDCClientID        string
 	OIDCClientSecret    string
 	OIDCIssuerURL       string
+	OIDCInternalBase    string
 	OIDCRedirectURI     string
 	EnrollURL           string
 	AccountURL          string
@@ -68,7 +69,23 @@ func Load() *Config {
 	// OIDC settings
 	oidcClientID := getEnv("LINKUP_OIDC_CLIENT_ID", "")
 	oidcClientSecret := getEnv("LINKUP_OIDC_CLIENT_SECRET", "")
-	oidcIssuerURL := getEnv("LINKUP_OIDC_DISCOVERY_URL", "")
+	// The ISSUER, not the discovery document.
+	//
+	// The library appends /.well-known/openid-configuration itself, so handing
+	// it the full discovery URL produces a request for
+	// …/.well-known/openid-configuration/.well-known/openid-configuration and a
+	// sign-in that fails at the first step. The old variable name said
+	// DISCOVERY_URL and the examples showed exactly that, so both are accepted
+	// and the suffix is trimmed rather than left to bite someone.
+	oidcIssuerURL := getEnv("LINKUP_OIDC_ISSUER", getEnv("LINKUP_OIDC_DISCOVERY_URL", ""))
+	oidcIssuerURL = recortarDiscovery(strings.TrimSpace(oidcIssuerURL))
+
+	// How THIS server reaches the provider, when that is not the public address.
+	// Two containers on the same host talking through the public hostname go out
+	// to the internet and come back through the tunnel to reach a neighbour, and
+	// stop working the moment that tunnel does. The browser still gets sent to
+	// the public address; only the server-to-server calls take the short way.
+	oidcInternalBase := strings.TrimRight(getEnv("LINKUP_OIDC_INTERNAL_BASE", ""), "/")
 	oidcRedirectURI := getEnv("LINKUP_OIDC_REDIRECT_URI", "http://localhost:3464/auth/callback")
 	enrollURL := getEnv("LINKUP_ENROLL_URL", "")
 	accountURL := getEnv("LINKUP_ACCOUNT_URL", "")
@@ -103,6 +120,7 @@ func Load() *Config {
 		OIDCClientID:        oidcClientID,
 		OIDCClientSecret:    oidcClientSecret,
 		OIDCIssuerURL:       oidcIssuerURL,
+		OIDCInternalBase:    oidcInternalBase,
 		OIDCRedirectURI:     oidcRedirectURI,
 		EnrollURL:           enrollURL,
 		AccountURL:          accountURL,
@@ -148,6 +166,22 @@ func isLoopbackHost(host string) bool {
 		return true
 	}
 	return false
+}
+
+// recortarDiscovery removes the well-known suffix if someone pasted the whole
+// discovery URL, and touches nothing else.
+//
+// The trailing slash is left exactly as it was found, deliberately: the `iss`
+// claim has to match what the provider publishes character for character, and
+// Authentik publishes .../application/o/<app>/ with it. Tidying that away would
+// turn a working configuration into "issuer did not match".
+func recortarDiscovery(raw string) string {
+	const sufijo = ".well-known/openid-configuration"
+	recortado := strings.TrimSuffix(raw, "/")
+	if strings.HasSuffix(recortado, sufijo) {
+		return strings.TrimSuffix(recortado, sufijo)
+	}
+	return raw
 }
 
 func (c *Config) IsOIDCConfigured() bool {

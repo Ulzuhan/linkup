@@ -41,17 +41,24 @@ func NewAuthService(cfg *config.Config) *AuthService {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuerURL)
+		provider, err := descubrirProveedor(ctx, cfg.OIDCIssuerURL, cfg.OIDCInternalBase)
 		if err != nil {
 			log.Printf("[WARN] Failed to discover OIDC provider at %s: %v (will retry on login)", cfg.OIDCIssuerURL, err)
 		} else {
+			// Discovery answered with internal addresses if that is where it was
+			// asked; the browser cannot reach those.
+			endpoint, errEndpoint := endpointPublico(provider.Endpoint(), cfg.OIDCIssuerURL)
+			if errEndpoint != nil {
+				log.Printf("[WARN] Could not map the authorization endpoint to the public origin: %v", errEndpoint)
+				endpoint = provider.Endpoint()
+			}
 			as.provider = provider
 			as.verifier = provider.Verifier(&oidc.Config{ClientID: cfg.OIDCClientID})
 			as.oauth2Config = &oauth2.Config{
 				ClientID:     cfg.OIDCClientID,
 				ClientSecret: cfg.OIDCClientSecret,
 				RedirectURL:  cfg.OIDCRedirectURI,
-				Endpoint:     provider.Endpoint(),
+				Endpoint:     endpoint,
 				// No "groups" scope is requested on purpose. Providers carry group
 				// membership inside the profile claim set —Authentik's default
 				// profile mapping emits it— and asking for a scope the provider
@@ -263,17 +270,21 @@ func (a *AuthService) reinitProvider() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	provider, err := oidc.NewProvider(ctx, a.cfg.OIDCIssuerURL)
+	provider, err := descubrirProveedor(ctx, a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase)
 	if err != nil {
 		return err
 	}
 	a.provider = provider
 	a.verifier = provider.Verifier(&oidc.Config{ClientID: a.cfg.OIDCClientID})
+	endpoint, err := endpointPublico(provider.Endpoint(), a.cfg.OIDCIssuerURL)
+	if err != nil {
+		return fmt.Errorf("could not map the authorization endpoint to the public origin: %w", err)
+	}
 	a.oauth2Config = &oauth2.Config{
 		ClientID:     a.cfg.OIDCClientID,
 		ClientSecret: a.cfg.OIDCClientSecret,
 		RedirectURL:  a.cfg.OIDCRedirectURI,
-		Endpoint:     provider.Endpoint(),
+		Endpoint:     endpoint,
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
 	return nil

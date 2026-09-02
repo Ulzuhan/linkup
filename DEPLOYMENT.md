@@ -56,7 +56,9 @@ LINKUP_PUBLIC_HOST=link.example.com
 LINKUP_DEFAULT_DOMAIN=link.example.com
 LINKUP_SESSION_SECRET=          # openssl rand -hex 32
 
-LINKUP_OIDC_DISCOVERY_URL=https://auth.example.com/.well-known/openid-configuration
+LINKUP_OIDC_ISSUER=https://auth.example.com/application/o/linkup/
+# Optional, and worth it when the provider is a container on the same host:
+# LINKUP_OIDC_INTERNAL_BASE=http://authentik:9000
 LINKUP_OIDC_CLIENT_ID=
 LINKUP_OIDC_CLIENT_SECRET=
 LINKUP_OIDC_REDIRECT_URI=https://link.example.com/auth/callback

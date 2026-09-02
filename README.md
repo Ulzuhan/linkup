@@ -131,7 +131,8 @@ setup and the hardening the compose file already applies.
 | `LINKUP_DEFAULT_DOMAIN` | Domain used for generated short links | value of `PUBLIC_HOST` |
 | `LINKUP_SESSION_SECRET` | 32+ characters. Sessions reset on restart without it | *(ephemeral)* |
 | `LINKUP_DB_PATH` | SQLite file | `./data/linkup.db` |
-| `LINKUP_OIDC_DISCOVERY_URL` | The only provider address needed; the rest comes from it | `""` |
+| `LINKUP_OIDC_ISSUER` | The issuer. The discovery document is derived from it | `""` |
+| `LINKUP_OIDC_INTERNAL_BASE` | Optional: internal address for server-to-server calls to the provider | `""` |
 | `LINKUP_OIDC_CLIENT_ID` / `_SECRET` | Client credentials | `""` |
 | `LINKUP_OIDC_REDIRECT_URI` | Public callback URL | `http://localhost:3464/auth/callback` |
 | `LINKUP_ENROLL_URL` | Where someone without an account is sent | `""` |

@@ -3,6 +3,36 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-09-04
+
+### Changed
+
+- OIDC authorization uses live UserInfo groups on every authenticated request,
+  with a five-second timeout and no stale-permission fallback. Configure
+  `LINKUP_REQUIRED_GROUP` to revoke application access by group removal.
+- OIDC sessions are now revocable records in SQLite, with encrypted access
+  tokens. Existing cookies require a new login. Sessions cannot outlive the
+  access token (no automatic refresh), or the 12-hour absolute limit.
+- In OIDC mode, API keys require the owner's latest unexpired, live-verified
+  login; keys cannot bypass group revocation or inherit group admin powers.
+  Standalone API-key behavior is unchanged.
+
+### Added
+
+- Signed OIDC `POST /auth/backchannel-logout`, with audience/issuer/signature,
+  event, nonce, issued-at, expiry and persistent replay validation. Local logout
+  also deletes the server session, invalidating saved copies of its cookie.
+- Regression tests for real signed OIDC login, current group changes, API-key
+  authorization, provider failures, token expiry, restart and logout validation.
+
+### Fixed
+
+- Session age is enforced by the server, with a 12-hour lifetime. Missing,
+  negative, future and expired timestamps are rejected even if the cookie is
+  replayed manually.
+- PIN-protected links require the PIN before exposing their destination through
+  the public preview page.
+
 ## [0.4.0] — 2026-09-02
 
 ### Added

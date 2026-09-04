@@ -144,6 +144,7 @@ setup and the hardening the compose file already applies.
 | `LINKUP_ACCOUNT_URL` | Where someone manages their account at the provider | `""` |
 | `LINKUP_OIDC_PROVIDER_NAME` | What the sign-in button calls your provider | `your provider` |
 | `LINKUP_ADMIN_GROUP` | Provider group whose members administer. Preferred | `""` |
+| `LINKUP_REQUIRED_GROUP` | Current UserInfo group required for all authenticated access | `""` |
 | `LINKUP_ADMIN_USERS` | Username fallback. Ignored when a group is set | `""` |
 | `LINKUP_ALLOW_PRIVATE_TARGETS` | Allow shortening to reserved ranges. Off by default | `false` |
 | `LINKUP_QRFORGE_URL` | QR-Forge instance for QR generation | `""` |

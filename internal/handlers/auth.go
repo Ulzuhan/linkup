@@ -72,8 +72,27 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles GET /auth/logout
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if err := h.authService.RevokeSession(r); err != nil {
+		http.Error(w, "Failed to revoke session", http.StatusServiceUnavailable)
+		return
+	}
 	h.authService.ClearSessionCookie(w)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// BackchannelLogout accepts only a signed OIDC logout token, never a browser cookie.
+func (h *AuthHandler) BackchannelLogout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	r.Body = http.MaxBytesReader(w, r.Body, 32<<10)
+	if err := r.ParseForm(); err != nil || len(r.PostForm["logout_token"]) != 1 {
+		http.Error(w, "Invalid logout request", http.StatusBadRequest)
+		return
+	}
+	if err := h.authService.BackchannelLogout(r.Context(), r.PostForm.Get("logout_token")); err != nil {
+		http.Error(w, "Logout rejected", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // Me handles GET /auth/me

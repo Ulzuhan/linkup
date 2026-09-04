@@ -27,6 +27,7 @@ type Config struct {
 	QRForgeURL          string
 	AdminUsers          map[string]bool
 	AdminGroup          string
+	RequiredGroup       string
 	DevMode             bool
 	AllowPrivateTargets bool
 	// Whether the footer links to the other tools of the house.
@@ -148,6 +149,7 @@ func Load() *Config {
 		QRForgeURL:          strings.TrimRight(qrForgeURL, "/"),
 		AdminUsers:          adminUsersMap,
 		AdminGroup:          adminGroup,
+		RequiredGroup:       strings.TrimSpace(getEnv("LINKUP_REQUIRED_GROUP", "")),
 		DevMode:             devMode,
 		AllowPrivateTargets: allowPrivateTargets,
 	}

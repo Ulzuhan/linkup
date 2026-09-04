@@ -75,6 +75,7 @@ func NewRouter(
 		r.Get("/callback", authHandler.Callback)
 		r.Get("/logout", authHandler.Logout)
 		r.Get("/me", authHandler.Me)
+		r.Post("/backchannel-logout", authHandler.BackchannelLogout)
 	})
 
 	// Web Dashboard

@@ -14,9 +14,11 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/database"
 	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -25,17 +27,25 @@ import (
 const (
 	SessionCookieName = "linkup_session"
 	StateCookieName   = "linkup_oidc_state"
+	// Enforced on the server as well as in the browser.
+	SessionTTL = 12 * time.Hour
 )
 
 type AuthService struct {
+	mu           sync.Mutex // protects lazy provider initialization
+	db           *database.DB
 	cfg          *config.Config
 	oauth2Config *oauth2.Config
 	verifier     *oidc.IDTokenVerifier
 	provider     *oidc.Provider
 }
 
-func NewAuthService(cfg *config.Config) *AuthService {
+// The database is mandatory for OIDC; standalone tests/local mode may omit it.
+func NewAuthService(cfg *config.Config, db ...*database.DB) *AuthService {
 	as := &AuthService{cfg: cfg}
+	if len(db) > 0 {
+		as.db = db[0]
+	}
 
 	if cfg.IsOIDCConfigured() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -83,6 +93,8 @@ func NewAuthService(cfg *config.Config) *AuthService {
 
 // GetAuthURL generates the Authentik OIDC redirect URL with CSRF state
 func (a *AuthService) GetAuthURL(w http.ResponseWriter) (string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.oauth2Config == nil {
 		if err := a.reinitProvider(); err != nil {
 			return "", fmt.Errorf("OIDC is not available: %w", err)
@@ -108,6 +120,8 @@ func (a *AuthService) GetAuthURL(w http.ResponseWriter) (string, error) {
 
 // HandleCallback exchanges authorization code for tokens and creates user session
 func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.oauth2Config == nil {
 		return nil, errors.New("OIDC is not configured")
 	}
@@ -168,6 +182,7 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 		Email             string   `json:"email"`
 		Name              string   `json:"name"`
 		Groups            []string `json:"groups"`
+		SID               string   `json:"sid"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		return nil, fmt.Errorf("failed to parse token claims: %w", err)
@@ -181,21 +196,34 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 		username = claims.Subject
 	}
 
-	isAdmin := a.cfg.IsAdmin(username, claims.Groups) || (a.cfg.DevMode && username == "dev-user")
+	isAdmin := a.cfg.IsAdmin(username, claims.Groups)
 
-	return &models.UserSession{
+	session := &models.UserSession{
 		UserID:    claims.Subject,
 		Username:  username,
 		Email:     claims.Email,
 		Groups:    claims.Groups,
 		IsAdmin:   isAdmin,
 		CreatedAt: time.Now().Unix(),
-	}, nil
+	}
+	// UserInfo, not the ID token's group snapshot, is the authorization source.
+	if err := a.authorizeWithProvider(ctx, a.provider, oauth2Token, session); err != nil {
+		return nil, err
+	}
+	session.IsAdmin = a.cfg.IsAdmin(session.Username, session.Groups)
+	if err := a.saveOIDCSession(ctx, session, claims.SID, oauth2Token); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 // SetSessionCookie encrypts and sets session cookie
 func (a *AuthService) SetSessionCookie(w http.ResponseWriter, session *models.UserSession) error {
-	data, err := json.Marshal(session)
+	issued := *session
+	if issued.CreatedAt == 0 {
+		issued.CreatedAt = time.Now().Unix()
+	}
+	data, err := json.Marshal(issued)
 	if err != nil {
 		return err
 	}
@@ -209,7 +237,7 @@ func (a *AuthService) SetSessionCookie(w http.ResponseWriter, session *models.Us
 		Name:     SessionCookieName,
 		Value:    encrypted,
 		Path:     "/",
-		MaxAge:   7 * 24 * 3600, // 7 days
+		MaxAge:   int(SessionTTL / time.Second),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Secure:   !a.cfg.DevMode,
@@ -266,11 +294,19 @@ func (a *AuthService) GetSession(r *http.Request) (*models.UserSession, error) {
 	if err := json.Unmarshal(decrypted, &session); err != nil {
 		return nil, err
 	}
+	now := time.Now().Unix()
+	if session.CreatedAt <= 0 || session.CreatedAt > now || now-session.CreatedAt >= int64(SessionTTL/time.Second) {
+		return nil, errors.New("expired or invalid session timestamp")
+	}
 
-	// Re-evaluated on every read so a change of policy —which group administers—
-	// takes effect without waiting for sessions to expire.
+	if a.cfg.IsOIDCConfigured() {
+		if err := a.authorizeSession(r.Context(), &session); err != nil {
+			return nil, err
+		}
+	}
+	// OIDC sessions now contain current groups; no cached authorization fallback.
 	session.IsAdmin = a.cfg.IsAdmin(session.Username, session.Groups) ||
-		(a.cfg.DevMode && session.Username == "dev-user")
+		(a.cfg.DevMode && !a.cfg.IsOIDCConfigured() && session.Username == "dev-user")
 
 	return &session, nil
 }

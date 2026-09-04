@@ -66,6 +66,7 @@ LINKUP_ENROLL_URL=https://auth.example.com/if/flow/enroll-linkup/
 LINKUP_ACCOUNT_URL=https://auth.example.com/if/user/
 
 LINKUP_ADMIN_GROUP=linkup-admins
+LINKUP_REQUIRED_GROUP=linkup
 LINKUP_DB_PATH=/data/linkup.db
 LINKUP_QRFORGE_URL=https://qr.example.com
 ```
@@ -129,6 +130,53 @@ server {
 Do **not** add `X-Forwarded-For`. LinkUp does not read it, and forwarding a
 visitor's address to a service that promises never to look at it only creates a
 place for it to leak from.
+
+## Session lifetime and revocation
+
+OIDC UserInfo is consulted before authorizing each authenticated request. The
+returned `sub` must match the ID token, and `groups` must reflect **current**
+membership, not a token snapshot. Configure `LINKUP_REQUIRED_GROUP` for access
+and `LINKUP_ADMIN_GROUP` for administration. Removing either group takes effect
+on the next authorization check, without a 12-hour delay. This assumes the
+provider publishes current groups in UserInfo (verified for Authentik 2026.8.0);
+test this property before migrating providers. LinkUp uses standard OIDC, not
+the provider's administration API.
+
+UserInfo errors, an unavailable provider, missing groups, a different subject,
+expired tokens or missing session records deny access. There is no cached-group
+fallback. Each check has a five-second request deadline; already-authorized
+in-flight operations are not undone. Anonymous redirects remain independent of
+the identity provider.
+
+Sessions are kept in SQLite with AES-GCM encrypted access tokens; cookies only
+carry a random record identifier and profile information, never those tokens.
+On upgrade to 0.5.0 **all old OIDC cookies require a new login**. The absolute
+limit remains 12 hours, but the access token's expiry is a shorter hard limit
+(one hour in KaiCorp). No refresh token is stored or used: sign in again when
+it expires. A new login removes expired records. Protect backups as credentials;
+rotation of `LINKUP_SESSION_SECRET` invalidates cookies and stored token proofs.
+
+Register `https://link.example.com/auth/backchannel-logout` as the provider's
+back-channel logout URI (an internal URL is preferable on a private OIDC
+network). The endpoint accepts a signed `logout_token` form field, verifies the
+issuer, client audience, signature, event, absent nonce, `iat` within five
+minutes (60-second future skew), optional expiry, and a unique `jti`. It deletes
+matching `sub`/`sid` records transactionally. Replay markers survive restarts and
+are pruned after ten minutes. Local logout deletes the server record too. This
+signal accelerates session closure; live UserInfo remains the guarantee when
+the signal is missing. Local logout does not end the provider's SSO session.
+
+**API-key compatibility change:** with OIDC configured, keys additionally need
+the owner's latest unexpired login and live UserInfo verification on each API
+request. No valid login means 401; retiring the service group also means 401.
+Keys are not deleted, and do not gain group-based administrator privileges.
+Unattended jobs must renew that login before its access token expires, or use a
+separately designed machine-identity flow; long-lived keys alone are no longer
+enough. Standalone deployments without OIDC keep their previous key behavior.
+
+The migration only adds `oidc_sessions` and `oidc_logout_jtis` and their indexes.
+It does not rewrite links or keys. A rollback to 0.4.0 restores the old security
+defects, so prefer a forward fix; never mistake a binary rollback for revocation.
 
 ## Backup and restore
 

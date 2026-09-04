@@ -153,6 +153,14 @@ func (h *RedirectHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The destination is the protected capability. Showing it in a public
+	// preview would bypass the PIN just as surely as redirecting to it.
+	if link.HasPIN {
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, "/pin/"+slug, http.StatusSeeOther)
+		return
+	}
+
 	cleanURL, stripped, _ := services.CleanURL(link.OriginalURL, h.cfg.PublicHost)
 	// La intención, no un parámetro suelto: QR-Forge abre el formulario con la
 	// URL y el título puestos y en modo estático. El contrato está en su README.

@@ -20,6 +20,11 @@ import (
 // mode, so no session is handed out for free, and with the enrollment link
 // and the footer links an operator would set.
 func setupPublicServer(t *testing.T) (http.Handler, func()) {
+	router, _, cleanup := setupPublicServerWithLinks(t)
+	return router, cleanup
+}
+
+func setupPublicServerWithLinks(t *testing.T) (http.Handler, *services.LinkService, func()) {
 	t.Helper()
 	tmpDir, err := os.MkdirTemp("", "linkup-web-test-*")
 	if err != nil {
@@ -59,7 +64,7 @@ func setupPublicServer(t *testing.T) (http.Handler, func()) {
 		webhooks, services.NewCSVService(linkService), services.NewRouterEngine(),
 		services.NewAuthService(cfg), renderer,
 	)
-	return router, func() { db.Close(); os.RemoveAll(tmpDir) }
+	return router, linkService, func() { db.Close(); os.RemoveAll(tmpDir) }
 }
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {

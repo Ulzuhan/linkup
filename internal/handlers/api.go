@@ -41,6 +41,9 @@ func getAuthSession(r *http.Request, authService *services.AuthService, apiKeySe
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if apiKeyService != nil {
 			if session, err := apiKeyService.ValidateKey(token); err == nil && session != nil {
+				if authService != nil && authService.AuthorizeAPIKey(r.Context(), session) != nil {
+					return nil
+				}
 				return session
 			}
 		}

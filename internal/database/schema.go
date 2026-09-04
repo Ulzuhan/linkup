@@ -4,6 +4,14 @@ import "fmt"
 
 func (db *DB) Migrate() error {
 	queries := []string{
+		`CREATE TABLE IF NOT EXISTS oidc_sessions (
+			id TEXT PRIMARY KEY, subject TEXT NOT NULL, sid TEXT NOT NULL,
+			username TEXT NOT NULL, access_token TEXT NOT NULL, expires_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_oidc_sessions_subject ON oidc_sessions(subject);`,
+		`CREATE INDEX IF NOT EXISTS idx_oidc_sessions_username ON oidc_sessions(username);`,
+		`CREATE INDEX IF NOT EXISTS idx_oidc_sessions_expiry ON oidc_sessions(expires_at);`,
+		`CREATE TABLE IF NOT EXISTS oidc_logout_jtis (jti TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);`,
 		`CREATE TABLE IF NOT EXISTS links (
 			id TEXT PRIMARY KEY,
 			slug TEXT NOT NULL,

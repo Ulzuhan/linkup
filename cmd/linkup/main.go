@@ -53,7 +53,7 @@ func main() {
 	})
 	csvService := services.NewCSVService(linkService)
 	routerEngine := services.NewRouterEngine()
-	authService := services.NewAuthService(cfg)
+	authService := services.NewAuthService(cfg, db)
 
 	// 5. Initialize web renderer
 	renderer, err := web.NewRenderer()

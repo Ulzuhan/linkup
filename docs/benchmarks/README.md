@@ -17,6 +17,13 @@ token invalidation is not proof of local cookie/SQLite time-based expiry; that
 and the remaining full matrix are still pending. Reauthorize fixture identities
 after this suite; it deliberately invalidates their sessions/tokens.
 
+At 03:44 UTC, the same OCI images passed fifteen more checks via
+`--access-contracts`: two-owner isolation, no group-admin inheritance by API
+keys, live UserInfo failure/revocation, public redirect availability, PIN preview
+protection, lockout and key deletion. Provider restoration and dataset cleanup
+were verified; the previous eleven checks also passed with the two-user fixture.
+See the linked OCI evidence. This is not the full matrix or a performance result.
+
 ## Source inventory
 
 The adjacent `inventory.json` records source commit, file hashes, route literals,

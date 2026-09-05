@@ -68,6 +68,9 @@ That artifact is for inspection/isolated staging, not approval to promote F1:
 equivalent HTTP performance, final-image tests and rollback remain separate gates.
 Docker's compiler and runtime bases are pinned by digest as well as version;
 updating a tag without its digest does not change the selected image.
+The [F1 OCI evidence](docs/benchmarks/2026-09-05-f1-oci.md) records a verified
+CI layout, linked SPDX/SLSA statements and the final binary compiler/hash;
+it explicitly does not approve performance or production promotion.
 
 `scripts/publish-scanned-image.sh --verify-only` validates a prepared layout
 and tags without contacting the registry. Set `RELEASE_LAYOUT`,

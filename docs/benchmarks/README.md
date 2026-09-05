@@ -10,6 +10,13 @@ up. See [OCI and staging evidence](2026-09-05-f1-oci.md). Equivalent compiler
 comparison, full failure matrix, image rollback and production promotion remain
 pending. A one-operation smoke is not a performance baseline.
 
+Later on 2026-09-05, `httpbench-stage --contracts` passed eleven automated
+authorization checks against those same OCI images, including actual UserInfo
+revalidation and provider restoration. See the evidence above. Provider-side
+token invalidation is not proof of local cookie/SQLite time-based expiry; that
+and the remaining full matrix are still pending. Reauthorize fixture identities
+after this suite; it deliberately invalidates their sessions/tokens.
+
 ## Source inventory
 
 The adjacent `inventory.json` records source commit, file hashes, route literals,

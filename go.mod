@@ -2,6 +2,8 @@ module github.com/Ulzuhan/linkup
 
 go 1.25.0
 
+toolchain go1.27.1
+
 require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-chi/chi/v5 v5.3.2

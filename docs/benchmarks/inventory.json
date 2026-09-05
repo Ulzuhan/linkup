@@ -1,0 +1,634 @@
+{
+  "commit": "88fc15a7f967ba10c41124a1fe3a4c944e6c6bf5",
+  "contract_source_files": [
+    "internal/database/db.go",
+    "internal/database/schema.go",
+    "internal/handlers/auth.go",
+    "internal/services/auth.go",
+    "internal/services/auth_revocation.go"
+  ],
+  "cookie_literals": {
+    "linkup_oidc_state": [
+      "internal/services/auth.go"
+    ],
+    "linkup_session": [
+      "internal/services/auth.go"
+    ]
+  },
+  "environment_names": {
+    "KAICORP_FOOTER_LINKS": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_ACCOUNT_URL": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_ADMIN_GROUP": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_ADMIN_USERS": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_ALLOW_PRIVATE_TARGETS": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_DB_PATH": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_DEFAULT_DOMAIN": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_DEV_MODE": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_ENROLL_URL": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_HOST": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_CLIENT_ID": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_CLIENT_SECRET": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_DISCOVERY_URL": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_INTERNAL_BASE": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_ISSUER": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_PROVIDER_NAME": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_OIDC_REDIRECT_URI": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_PORT": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_PUBLIC_HOST": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_QRFORGE_URL": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_REQUIRED_GROUP": [
+      "internal/config/config.go"
+    ],
+    "LINKUP_SESSION_SECRET": [
+      "internal/config/config.go"
+    ]
+  },
+  "package_scripts": {},
+  "routes": [
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "Authorization",
+      "source": "internal/handlers/api.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "logout_token",
+      "source": "internal/handlers/auth.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "success",
+      "source": "internal/handlers/dashboard.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "error",
+      "source": "internal/handlers/dashboard.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "folder",
+      "source": "internal/handlers/dashboard.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "tag",
+      "source": "internal/handlers/dashboard.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/healthz",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/health",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "ROUTE"
+      ],
+      "path": "/auth",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/login",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/callback",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/logout",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/me",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/backchannel-logout",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/settings",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/links/create",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/settings/keys",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/settings/domains",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/settings/webhooks",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "ROUTE"
+      ],
+      "path": "/api",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/clean-preview",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/links",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/links",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/links/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/links/{id}/qr.svg",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/links/{id}/qr.png",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/links/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/links/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/links/bulk-import",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/links/export",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/domains",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/domains",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/domains/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/folders",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/folders",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "PATCH"
+      ],
+      "path": "/folders/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/folders/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/keys",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/keys",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/keys/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/webhooks",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/webhooks",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "DELETE"
+      ],
+      "path": "/webhooks/{id}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/pin/{slug}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/pin/{slug}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/preview/{slug}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/{slug}",
+      "source": "internal/handlers/router.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "success",
+      "source": "internal/handlers/settings.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "error",
+      "source": "internal/handlers/settings.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "new_key",
+      "source": "internal/handlers/settings.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "state",
+      "source": "internal/services/auth.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "code",
+      "source": "internal/services/auth.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "User-Agent",
+      "source": "internal/services/router_engine.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "Accept-Language",
+      "source": "internal/services/router_engine.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "v",
+      "source": "internal/web/embed.go",
+      "syntax": "go-literal-review-subrouter-prefix"
+    }
+  ],
+  "schema": 2,
+  "scope": "source literals; review dynamic names, special Next segments and grouped Go routes manually",
+  "source_sha256": {
+    "cmd/linkup/main.go": "8490b1713a21eb8d49a850be8c9e6d2f6e658b2e095a9770fbc8dffe46cdedf2",
+    "internal/config/config.go": "5d54d2ed90ef0ce06355a544ba2263b08459d74ad7d61c1d3df21387233857e2",
+    "internal/database/db.go": "7ffa27f7a2569b17cb5c6bdc1998f1b9c9df8c1802991de0aeeaf71e17edb667",
+    "internal/database/schema.go": "3b8381bbc6deb6ebf50f44ca213424e6a66f58abe865c9797721686d1f741920",
+    "internal/handlers/api.go": "27ddf63787451b6d621078fa7f64c719eb54a28be2b3d44a7f208cf8c4ec4c02",
+    "internal/handlers/api_keys.go": "cbd82795a7fca76c053e0d7557b1f6b8ba4b6b33ad0248b8790f812f307b597e",
+    "internal/handlers/auth.go": "25a23bf00be862af0c08d62470a69226daac1e231dd2c811a384ef74c833e6af",
+    "internal/handlers/bulk.go": "329abc9a91224b76255a52ebcd03a9625d04b152270473827f363e2ab020f559",
+    "internal/handlers/dashboard.go": "072855eb870ba36b40cfc6d8af19abe58aca47219f557f78b8b1b13f029bdd01",
+    "internal/handlers/domains.go": "45671c1c9d3fa9899baa492b6ce1fe1c059793c29dc43727bfb4d64d99596d4d",
+    "internal/handlers/folders.go": "fa1b07019aced811a376ca31d221e8de317f61cda0dd4ee5e4e0f8fd633f2e16",
+    "internal/handlers/limites.go": "5ac8c0bbfc4041fc40df7bb8aecfeac377ff0d06e0d99bb69db63d63cb9c6344",
+    "internal/handlers/pin.go": "46466e83a2a9ecf854cb1d4557a9ffaefa4328f831f1fd90dd2eb46883619bca",
+    "internal/handlers/redirect.go": "e0fd9cec9635ce1e14b10d5d2a62a541c348c7adb0cf4d22113655441120f75c",
+    "internal/handlers/router.go": "2818585e2a5a5367eabae7ebc7d4f89db6418872567e8fc4428088c2807a0b02",
+    "internal/handlers/settings.go": "e1b620c3f48918e8ce958ce17bf38e4f2acdceff130464ec85252c621790c6e2",
+    "internal/handlers/webhooks.go": "e8031556c5219097a3be1eca30611364aeaa4609183bdadaa459f64f6e05930d",
+    "internal/models/api_key.go": "9d917e8b33ce20a4897ae780308aa5efc6e042a0ed25109f0993468925f01043",
+    "internal/models/domain.go": "112f1fbf8beb2f1036cd2ea68af5dec931027771f5d24fbac72afb0a37763827",
+    "internal/models/folder.go": "eacee9020bb2580c8d0d0cbf0de62450f89c6bab215520f92e369edafa056872",
+    "internal/models/link.go": "dd7f813c978257031b8fc733441919c2a3c9e5ccffb502cbb7dcc3bf72a9ce19",
+    "internal/models/webhook.go": "86d2d1b80284071e01f56cb2bc5f332b4163fd3d475eae0203ec7d7264d362e1",
+    "internal/services/api_key_service.go": "e099314c7ff4347970251722bacde8bbf9ba0f327293cb3d29c80478a13dea00",
+    "internal/services/auth.go": "10356b08104f0721ad3b00460b094941d31a95f275eeb0f7cfd940b9d075adaa",
+    "internal/services/auth_benchmark_test.go": "4182ed12b8be78271401b9a6cc62c5de47a62bac69f13d3d68c195ddafcd80e6",
+    "internal/services/auth_revocation.go": "0e3bb69626fa62b8aaafff192e7e964ecb3917b90d16ff20834d2ad602a712a2",
+    "internal/services/auth_revocation_test.go": "eaf5bec5126ba93629fa79d236af869d0dc89d5de8229e4c15624dfc08bed1c1",
+    "internal/services/auth_session_test.go": "0d095d405e9f2ec3af032b8bde0068b4f2f1c7fdbebcfc72af79b697dfaf5d89",
+    "internal/services/cache.go": "7ce883000cb6d59a8227b2deb0d6d321b1afd26dab8e4eafc039913fa1daf9e8",
+    "internal/services/cleaner.go": "fa7ac7ad0cd24192f41fa6a096975b6cdf314f989d273611006c94611439ea7d",
+    "internal/services/csv_service.go": "b7d637f148913de7d5d5fd48efce9d37fa7cf43085b688e7bc2cea47f8428e9c",
+    "internal/services/domain_service.go": "baaafd0780381ba5c0ab7f6293bd5fddecf54b6786d7b0c7f60c7f0435cf1766",
+    "internal/services/egress.go": "c8ecc4fa1d04574edbc9ec1bd051b05128c18b10d6c038ba847288e5d80c93f7",
+    "internal/services/egress_internal_test.go": "ec9d30d998739ec6ee75e43f28e1ad3a1d1b4cb3039b0bc02e130d95acae8bce",
+    "internal/services/folder_service.go": "da3d01caebbf9349425cfdc4e4b7f580264f82aa289f7b353f9be8a79d2bef81",
+    "internal/services/limites.go": "966b12af3dd836e416b048ad0901a9825f3f9dfd7ce99f8a614428adba3a276f",
+    "internal/services/link_service.go": "68606e1fd9d006da5abc21b811e6eced7ec392bd26fca73933dd9fd8c030133f",
+    "internal/services/oidc_origen.go": "79a22995b277587f183cb63578b31f6b2b03cc6e05ae5fc3e8f56006491f484c",
+    "internal/services/oidc_origen_internal_test.go": "cc9965e96b9f24fd0a28bf7f34a45c91be80268dfbdb7b30bd0d0cbb5ddf84be",
+    "internal/services/pin.go": "ae0d0860fbe311b37f4c244d5b5c49bc30b6a0df2295337578259ca9bdf5425a",
+    "internal/services/qr.go": "ae4a2afbab44f66be13531025806c465ca9ed47b3ec930fd4505511ba4a35bdf",
+    "internal/services/qr_internal_test.go": "cd74f17b060b0c609fe0122fbeebd2a60be33b2dc5e2f211f820c48b856c46b4",
+    "internal/services/router_engine.go": "32701b6d4bd8b35da545472b104978bbe8b294f00f8ddbb864ccfac9ddaa1820",
+    "internal/services/webhook_service.go": "20daf441d4ec1bd91cd00330c44b0b36b104b1e3746c1f3d780024c8adb1832b",
+    "internal/web/embed.go": "1f9602decdab12ee25260db30e598ce1174dc7983cd198769c0d906edf310e15",
+    "internal/web/static/js/app.js": "e4babf435e9fc0bb40586af984f57347d3e2d8735010868c1b93740abff34162",
+    "scripts/publish-scanned-image.sh": "11eb09b7084b3ee2851fdfbf5051710e990f91f4976c4b6b40c31f203edec5c4",
+    "scripts/tests/test_publish_scanned_image.py": "3af5c31304a013ac1d0c39c2bcf1eed8871269e074531d628dc54dcc8a5ee092",
+    "tests/admin_test.go": "53edaae234114e146f3299db69aba79c3648a1b2938ed6902f0ceccbf58c9412",
+    "tests/api_key_test.go": "2300dd3ab74ed9ae29d63606164334bae65301003a2962036f4981f3534b115d",
+    "tests/api_test.go": "502582a14b8b2b9bdcd6e1f69147e3821d64e6953caa2e56099da270ec3c8419",
+    "tests/cleaner_test.go": "8ec1a591d229c5d7fe55822598a42e748fec4c832963283216cb2326bee61833",
+    "tests/csv_test.go": "ca8ed15c10d2df279e9ac8fcd8861a13a4bd8235dfd34b5036e8a4c63247f4e1",
+    "tests/domain_test.go": "efca4a43f765d2ed0ee5cf84be95e435a9d60fd2ad7c0f6e7a1aa9af7010e3ca",
+    "tests/egress_test.go": "facb569c865eb3fd992a4fb17cf9ba7042e85b9a4958944d5d1e6e2dc539bc58",
+    "tests/helpers_egress_test.go": "443d957965eae6a3f132403cfe0d0ea49c8e5c00289ac963da0f22f68f8264fb",
+    "tests/limites_test.go": "172ce9c5ba55fe128372db2ad1ac5141e81e520389cb2b9039ef02886b334699",
+    "tests/manage_test.go": "e522d4ccaa8c6a92571e3b50a9ca9aac1a808616dcec042e44297cdb034ed44c",
+    "tests/oidc_origen_test.go": "cceeab24d83e0520f279bd50cf1f31301450e2094b93e958b5009805562f1783",
+    "tests/preview_security_test.go": "0301215051e5197002b808e0ebd73b9ef3b87c8357b292d144094193e4f9cbcd",
+    "tests/qr_test.go": "ea3dfe2bd809761ff230c477855042fbab62356d8fcf061601baa78d9aeaaf24",
+    "tests/redirect_test.go": "e6b0517cadbb1112f379549a76e63a3a60e2287615825ffc08ab809d4a546e81",
+    "tests/routing_test.go": "1169cfcce6803b07ac3182e7d98402f8391d9a2ef035be8d86f4b02e5d1ac649",
+    "tests/static_test.go": "347965adf0f8535061f3f61d1d7e18b72c9acf8b1cf73a04e619408d89c7482d",
+    "tests/web_test.go": "640c7d2f89e6413119ea781864e02b046ec96828eebd3db9be0f49ace6e1b0dc",
+    "tests/webhook_test.go": "59157a6dc4d60f5f55cea057ec4e81df1870d52a2a49cfba64d03b4a3844e42a"
+  },
+  "test_files": [
+    "internal/services/auth_benchmark_test.go",
+    "internal/services/auth_revocation_test.go",
+    "internal/services/auth_session_test.go",
+    "internal/services/egress_internal_test.go",
+    "internal/services/oidc_origen_internal_test.go",
+    "internal/services/qr_internal_test.go",
+    "scripts/tests/test_publish_scanned_image.py",
+    "tests/admin_test.go",
+    "tests/api_key_test.go",
+    "tests/api_test.go",
+    "tests/cleaner_test.go",
+    "tests/csv_test.go",
+    "tests/domain_test.go",
+    "tests/egress_test.go",
+    "tests/helpers_egress_test.go",
+    "tests/limites_test.go",
+    "tests/manage_test.go",
+    "tests/oidc_origen_test.go",
+    "tests/preview_security_test.go",
+    "tests/qr_test.go",
+    "tests/redirect_test.go",
+    "tests/routing_test.go",
+    "tests/static_test.go",
+    "tests/web_test.go",
+    "tests/webhook_test.go"
+  ]
+}

@@ -1,0 +1,63 @@
+name: Build and verify the scanned OCI artifact
+description: One OCI build with attestations, security scan and digest verification; never publishes
+
+inputs:
+  labels:
+    description: Image metadata labels, passed directly to BuildKit
+    required: false
+    default: ''
+
+outputs:
+  digest:
+    description: Digest of the exact scanned OCI artifact
+    value: ${{ steps.build.outputs.digest }}
+  layout:
+    description: Local OCI layout directory
+    value: ${{ runner.temp }}/linkup.oci
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build the release artifact once
+      id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64
+        outputs: type=oci,dest=${{ runner.temp }}/linkup.oci,tar=false
+        tags: linkup:release-candidate
+        labels: ${{ inputs.labels }}
+        provenance: mode=max
+        sbom: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Scan the OCI layout (fixable HIGH/CRITICAL block release)
+      uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+      with:
+        input: ${{ runner.temp }}/linkup.oci
+        version: v0.74.0
+        scanners: vuln
+        format: table
+        exit-code: '1'
+        severity: HIGH,CRITICAL
+        ignore-unfixed: true
+
+    - name: Install OCI copier
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install --no-install-recommends -y skopeo
+
+    - name: Verify the exact layout digest without registry access
+      shell: bash
+      env:
+        RELEASE_LAYOUT: ${{ runner.temp }}/linkup.oci
+        RELEASE_DIGEST: ${{ steps.build.outputs.digest }}
+      run: |
+        export RELEASE_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+        export RELEASE_TAGS="${RELEASE_REPOSITORY}:verification-only"
+        bash scripts/publish-scanned-image.sh --verify-only

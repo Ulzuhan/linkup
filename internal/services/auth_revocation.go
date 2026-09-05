@@ -165,7 +165,8 @@ func (a *AuthService) BackchannelLogout(ctx context.Context, raw string) error {
 	if err != nil {
 		return err
 	}
-	// exp is optional for logout tokens; validate it ourselves when present.
+	// Validate required exp explicitly with iat after signature/audience checks.
+	// Back-Channel Logout 1.0 errata set 1 requires expiration, like an ID token.
 	verifier := provider.Verifier(&oidc.Config{ClientID: a.cfg.OIDCClientID, SkipIssuerCheck: a.cfg.OIDCInternalBase != "", SkipExpiryCheck: true})
 	token, err := verifier.Verify(ctx, raw)
 	if err != nil || !emisorValido(token.Issuer, a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase) {
@@ -186,7 +187,7 @@ func (a *AuthService) BackchannelLogout(ctx context.Context, raw string) error {
 	_, nonce := all["nonce"]
 	var event map[string]json.RawMessage
 	if nonce || claims.JTI == "" || claims.IAT <= 0 || claims.IAT > now+60 || claims.IAT < now-300 ||
-		(claims.EXP != nil && *claims.EXP <= now) || (token.Subject == "" && claims.SID == "") ||
+		(claims.EXP == nil || *claims.EXP <= now) || (token.Subject == "" && claims.SID == "") ||
 		json.Unmarshal(claims.Events["http://schemas.openid.net/event/backchannel-logout"], &event) != nil || event == nil {
 		return errAccessRevoked
 	}

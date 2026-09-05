@@ -24,7 +24,7 @@ import (
 )
 
 type liveAuthFixture struct {
-	t       *testing.T
+	t       testing.TB
 	key     *rsa.PrivateKey
 	server  *httptest.Server
 	auth    *AuthService
@@ -51,7 +51,7 @@ func (f *liveAuthFixture) signed(claims map[string]any, algorithm string) string
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-func newLiveAuth(t *testing.T) *liveAuthFixture {
+func newLiveAuth(t testing.TB) *liveAuthFixture {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -287,7 +287,6 @@ func TestBackchannelLogoutValidationAndDurability(t *testing.T) {
 		t.Fatal(err)
 	}
 	claims = f.logoutClaims()
-	delete(claims, "exp") // optional per the standard
 	raw := f.signed(claims, "RS256")
 	if err := f.auth.BackchannelLogout(context.Background(), raw); err != nil {
 		t.Fatal(err)
@@ -301,6 +300,39 @@ func TestBackchannelLogoutValidationAndDurability(t *testing.T) {
 	}
 	if err := restarted.AuthorizeAPIKey(context.Background(), &models.UserSession{Username: "alice"}); err == nil {
 		t.Fatal("key bypassed back-channel logout")
+	}
+}
+
+func TestBackchannelLogoutRequiresExpiry(t *testing.T) {
+	for _, scenario := range []string{"missing", "null", "zero", "expired", "string", "fractional"} {
+		t.Run(scenario, func(t *testing.T) {
+			f := newLiveAuth(t)
+			claims := f.logoutClaims()
+			switch scenario {
+			case "missing":
+				delete(claims, "exp")
+			case "null":
+				claims["exp"] = nil
+			case "zero":
+				claims["exp"] = 0
+			case "expired":
+				claims["exp"] = time.Now().Unix() - 1
+			case "string":
+				claims["exp"] = "9999999999"
+			case "fractional":
+				claims["exp"] = float64(time.Now().Unix()+300) + 0.5
+			}
+			if err := f.auth.BackchannelLogout(context.Background(), f.signed(claims, "RS256")); err == nil {
+				t.Fatal("logout with missing or invalid expiration accepted")
+			}
+			if _, err := f.auth.GetSession(f.request()); err != nil {
+				t.Fatal("invalid expiration revoked the existing session")
+			}
+			var count int
+			if err := f.db.QueryRow(`SELECT COUNT(*) FROM oidc_logout_jtis`).Scan(&count); err != nil || count != 0 {
+				t.Fatal("invalid expiration consumed the replay identifier")
+			}
+		})
 	}
 }
 

@@ -6,23 +6,34 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  GOTOOLCHAIN: local
+
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.27.1'
           cache: true
 
       - name: Verify Dependencies
-        run: go mod verify
+        run: |
+          test "$(go env GOVERSION)" = "go1.27.1"
+          go mod verify
 
       - name: Check Formatting
         run: |
@@ -38,5 +49,48 @@ jobs:
       - name: Run Tests
         run: go test -v -race ./...
 
+      - name: Check reachable vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
+      - name: Check release publisher contract
+        run: |
+          bash -n scripts/publish-scanned-image.sh
+          python3 -m unittest discover -s scripts/tests -v
+
       - name: Build Binary
         run: go build -ldflags="-s -w" -o ./bin/linkup ./cmd/linkup
+
+  oci:
+    name: OCI artifact (no publication)
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Derive image labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: type=raw,value=verification-only
+      - name: Exercise the same artifact path used by releases
+        id: artifact
+        uses: ./.github/actions/scanned-oci
+        with:
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Preserve the verified layout for isolated staging and inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkup-oci-${{ github.sha }}
+          path: ${{ steps.artifact.outputs.layout }}
+          if-no-files-found: error
+          retention-days: 3
+      - name: Record the checked digest
+        env:
+          CHECKED_DIGEST: ${{ steps.artifact.outputs.digest }}
+        run: printf 'Verified OCI artifact (not published) `%s`\n' "$CHECKED_DIGEST" >> "$GITHUB_STEP_SUMMARY"

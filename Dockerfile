@@ -1,7 +1,10 @@
 # ==============================================================================
 # Build Stage
 # ==============================================================================
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27.1-alpine@sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125 AS builder
+
+# The selected image is the compiler: never silently download another toolchain.
+ENV GOTOOLCHAIN=local
 
 WORKDIR /build
 
@@ -24,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ==============================================================================
 # Production Runtime Stage (Hardened, Non-Root, Minimal)
 # ==============================================================================
-FROM alpine:3.21
+FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
 
 # Create non-root system user and group (UID 10001)
 RUN addgroup -g 10001 -S linkup && \

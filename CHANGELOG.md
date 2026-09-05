@@ -8,7 +8,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Pin the release and CI toolchain to Go 1.27.1, preventing implicit toolchain
-  downloads in Docker/CI. No application API, database or OIDC policy changes.
+  downloads in Docker/CI. The toolchain update itself does not change the API,
+  database or OIDC policy; the separate logout-validation fix is listed below.
 - CI checks reachable vulnerabilities with pinned govulncheck v1.7.0.
 - Release scans and publishes a single OCI artifact with SBOM/provenance,
   preserving its digest instead of rebuilding after the security scan.
@@ -20,6 +21,15 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 - Reproducible authorization microbenchmarks backed by temporary SQLite and a
   signed HTTP test IdP, including a live UserInfo request on every operation.
+
+### Fixed
+
+- Require a present, unexpired `exp` claim in signed back-channel logout tokens,
+  as required by [OIDC Back-Channel Logout 1.0](https://openid.net/specs/openid-connect-backchannel-1_0.html#LogoutToken).
+  Previously a token without `exp` could pass the other checks. Invalid expiry
+  must neither revoke a session nor consume its replay identifier. Authentik
+  2026.8.0 emits `exp`; issuer/audience, groups, session TTL and SQLite schema
+  are unchanged. This is unreleased and needs a new OCI/staging verification.
 
 ## [0.5.0] — 2026-09-04
 

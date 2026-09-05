@@ -3,6 +3,11 @@
 Status: source contract prepared on 2026-09-04; full load results pending.
 This is not a migration or evidence of performance improvement.
 
+Later correction: signed back-channel logout now requires `exp`; the old
+acceptance of a missing claim was reproduced and fixed with regression tests.
+The OCI/staging evidence below predates this fix. A newly scanned artifact and
+repeated staging are required; no production promotion has happened.
+
 Update 2026-09-05: the inspected Go 1.27.1 OCI ran in isolated functional staging
 with a fixed synthetic IdP and HTTPS. Login/UI/CRUD and basic group revocation,
 IdP outage/recovery and copied-cookie logout checks passed; resources were cleaned

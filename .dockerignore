@@ -13,3 +13,5 @@ tests/
 LICENSE
 Makefile
 docs/
+**/__pycache__/
+**/*.py[cod]

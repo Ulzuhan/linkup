@@ -24,7 +24,7 @@ import (
 )
 
 type liveAuthFixture struct {
-	t       *testing.T
+	t       testing.TB
 	key     *rsa.PrivateKey
 	server  *httptest.Server
 	auth    *AuthService
@@ -51,7 +51,7 @@ func (f *liveAuthFixture) signed(claims map[string]any, algorithm string) string
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-func newLiveAuth(t *testing.T) *liveAuthFixture {
+func newLiveAuth(t testing.TB) *liveAuthFixture {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

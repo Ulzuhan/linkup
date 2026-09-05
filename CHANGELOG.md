@@ -3,6 +3,24 @@
 Notable changes to LinkUp. Format based on [Keep a Changelog](https://keepachangelog.com/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Pin the release and CI toolchain to Go 1.27.1, preventing implicit toolchain
+  downloads in Docker/CI. No application API, database or OIDC policy changes.
+- CI checks reachable vulnerabilities with pinned govulncheck v1.7.0.
+- Release scans and publishes a single OCI artifact with SBOM/provenance,
+  preserving its digest instead of rebuilding after the security scan.
+- PR CI exercises that same OCI build/scan/digest path with read-only repository
+  permissions and no registry login or publication. Verified layouts are retained
+  for three days for isolated staging and inspection; no release is implied.
+
+### Added
+
+- Reproducible authorization microbenchmarks backed by temporary SQLite and a
+  signed HTTP test IdP, including a live UserInfo request on every operation.
+
 ## [0.5.0] — 2026-09-04
 
 ### Changed

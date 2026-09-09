@@ -2,10 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/config"
@@ -46,11 +48,42 @@ func (a *AuthService) authorizeWithProvider(ctx context.Context, provider *oidc.
 	if err := info.Claims(&claims); err != nil {
 		return errAccessRevoked
 	}
-	if a.cfg.RequiredGroup != "" && !slices.Contains(claims.Groups, a.cfg.RequiredGroup) {
+	groups := claims.Groups
+	if len(groups) == 0 {
+		groups = groupsFromAccessToken(token.AccessToken)
+	}
+	if a.cfg.RequiredGroup != "" && !slices.Contains(groups, a.cfg.RequiredGroup) {
 		return errAccessRevoked
 	}
-	session.Groups = claims.Groups
+	session.Groups = groups
 	return nil
+}
+
+// groupsFromAccessToken reads the `groups` claim of a JWT access token.
+//
+// Some providers (Supabase Auth among them) answer UserInfo with the bare
+// subject and carry the group list in the access token instead, put there by a
+// claims hook. UserInfo has just accepted this very token — a tampered one
+// would have failed its signature check there — and it reached us either from
+// the token endpoint or sealed from our own database, so the payload can be
+// read without re-verifying the signature. Whether the authorization is still
+// current keeps being UserInfo's call: a revoked token gets a 403 there first.
+func groupsFromAccessToken(raw string) []string {
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		return nil
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil
+	}
+	var claims struct {
+		Groups []string `json:"groups"`
+	}
+	if json.Unmarshal(payload, &claims) != nil {
+		return nil
+	}
+	return claims.Groups
 }
 
 func (a *AuthService) saveOIDCSession(ctx context.Context, session *models.UserSession, sid string, token *oauth2.Token) error {

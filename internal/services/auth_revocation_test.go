@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -36,6 +37,12 @@ type liveAuthFixture struct {
 	groups  []string
 	sub     string
 	status  int
+	// jwtAccess makes the token endpoint return a signed JWT access token that
+	// carries the groups; bareUserInfo makes UserInfo answer with the subject
+	// only, the way Supabase Auth does.
+	jwtAccess    bool
+	bareUserInfo bool
+	access       string
 }
 
 func (f *liveAuthFixture) signed(claims map[string]any, algorithm string) string {
@@ -51,13 +58,16 @@ func (f *liveAuthFixture) signed(claims map[string]any, algorithm string) string
 	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
 }
 
-func newLiveAuth(t testing.TB) *liveAuthFixture {
+func newLiveAuth(t testing.TB) *liveAuthFixture { return newLiveAuthWith(t, func(*liveAuthFixture) {}) }
+
+func newLiveAuthWith(t testing.TB, ajustar func(*liveAuthFixture)) *liveAuthFixture {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &liveAuthFixture{t: t, key: key, groups: []string{"linkup", "admins"}, sub: "subject-1", status: 200}
+	f := &liveAuthFixture{t: t, key: key, groups: []string{"linkup", "admins"}, sub: "subject-1", status: 200, access: "secret-access-token"}
+	ajustar(f)
 	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -68,15 +78,24 @@ func newLiveAuth(t testing.TB) *liveAuthFixture {
 		case "/token":
 			now := time.Now().Unix()
 			id := f.signed(map[string]any{"iss": f.server.URL, "aud": "linkup-client", "sub": "subject-1", "sid": "sid-1", "preferred_username": "alice", "groups": []string{"linkup", "admins"}, "nonce": f.nonce, "iat": now, "exp": now + 3600}, "RS256")
-			json.NewEncoder(w).Encode(map[string]any{"access_token": "secret-access-token", "token_type": "Bearer", "expires_in": 3600, "id_token": id})
+			if f.jwtAccess {
+				f.mu.Lock()
+				f.access = f.signed(map[string]any{"iss": f.server.URL, "aud": "authenticated", "sub": "subject-1", "groups": f.groups, "iat": now, "exp": now + 3600}, "RS256")
+				f.mu.Unlock()
+			}
+			json.NewEncoder(w).Encode(map[string]any{"access_token": f.access, "token_type": "Bearer", "expires_in": 3600, "id_token": id})
 		case "/userinfo":
 			f.mu.Lock()
 			defer f.mu.Unlock()
-			if r.Header.Get("Authorization") != "Bearer secret-access-token" {
+			if r.Header.Get("Authorization") != "Bearer "+f.access {
 				w.WriteHeader(401)
 				return
 			}
 			w.WriteHeader(f.status)
+			if f.bareUserInfo {
+				json.NewEncoder(w).Encode(map[string]any{"sub": f.sub})
+				return
+			}
 			json.NewEncoder(w).Encode(map[string]any{"sub": f.sub, "groups": f.groups})
 		default:
 			http.NotFound(w, r)
@@ -353,5 +372,25 @@ func TestBackchannelSubjectAndSessionSelectors(t *testing.T) {
 				t.Fatal(fmt.Sprintf("%s logout left session active", selector))
 			}
 		})
+	}
+}
+
+// Supabase Auth answers UserInfo with the subject only and puts the groups in
+// the access token: the session must still carry them and admin must still work.
+func TestOIDCGroupsFallBackToAccessToken(t *testing.T) {
+	f := newLiveAuthWith(t, func(f *liveAuthFixture) { f.jwtAccess = true; f.bareUserInfo = true })
+	session, err := f.auth.GetSession(f.request())
+	if err != nil {
+		t.Fatalf("login with bare UserInfo: %v", err)
+	}
+	if !slices.Contains(session.Groups, "linkup") || !session.IsAdmin {
+		t.Fatalf("groups not taken from the access token: %v (admin %v)", session.Groups, session.IsAdmin)
+	}
+}
+
+// An opaque access token carries no groups: nothing is invented.
+func TestGroupsFromOpaqueAccessTokenIsNil(t *testing.T) {
+	if got := groupsFromAccessToken("opaque-token"); got != nil {
+		t.Fatalf("opaque token should yield no groups, got %v", got)
 	}
 }

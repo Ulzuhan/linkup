@@ -5,6 +5,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-09
+
 ### Changed
 
 - Pin the release and CI toolchain to Go 1.27.1, preventing implicit toolchain
@@ -19,6 +21,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Groups fall back to the access token's `groups` claim when UserInfo carries
+  none. Supabase Auth answers UserInfo with the bare subject and puts the group
+  list in the access token through a claims hook; UserInfo stays the live
+  authorization check (a revoked token is refused there first), the token only
+  supplies the list. Providers that return groups in UserInfo are unaffected.
 - Reproducible authorization microbenchmarks backed by temporary SQLite and a
   signed HTTP test IdP, including a live UserInfo request on every operation.
 

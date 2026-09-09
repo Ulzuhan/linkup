@@ -103,11 +103,15 @@ func (a *AuthService) GetAuthURL(w http.ResponseWriter) (string, error) {
 
 	state := config.GenerateRandomKey(16)
 	nonce := config.GenerateRandomKey(16)
+	// PKCE (RFC 7636), S256. OAuth 2.1 providers such as Supabase Auth refuse an
+	// authorization request without it, and it costs nothing with a confidential
+	// client: the verifier travels in the same short-lived cookie as the state.
+	verifier := oauth2.GenerateVerifier()
 
-	// Store state in temporary cookie
+	// Store state, nonce and PKCE verifier in a temporary cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     StateCookieName,
-		Value:    state + ":" + nonce,
+		Value:    state + ":" + nonce + ":" + verifier,
 		Path:     "/",
 		MaxAge:   300, // 5 minutes
 		HttpOnly: true,
@@ -115,7 +119,7 @@ func (a *AuthService) GetAuthURL(w http.ResponseWriter) (string, error) {
 		Secure:   !a.cfg.DevMode,
 	})
 
-	return a.oauth2Config.AuthCodeURL(state, oidc.Nonce(nonce)), nil
+	return a.oauth2Config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), nil
 }
 
 // HandleCallback exchanges authorization code for tokens and creates user session
@@ -132,11 +136,12 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 	}
 
 	parts := strings.Split(stateCookie.Value, ":")
-	if len(parts) != 2 {
+	if len(parts) != 3 {
 		return nil, errors.New("invalid state cookie format")
 	}
 	expectedState := parts[0]
 	expectedNonce := parts[1]
+	verifier := parts[2]
 
 	stateQuery := r.URL.Query().Get("state")
 	if stateQuery == "" || stateQuery != expectedState {
@@ -151,7 +156,7 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	oauth2Token, err := a.oauth2Config.Exchange(ctx, code)
+	oauth2Token, err := a.oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange token: %w", err)
 	}

@@ -5,6 +5,15 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-09-09
+
+### Added
+
+- PKCE (S256) on the authorization request. OAuth 2.1 providers such as
+  Supabase Auth refuse an authorization code flow without it; the verifier
+  travels in the same five-minute state cookie and is sent at the token
+  exchange. Providers that do not require PKCE ignore it.
+
 ## [0.5.1] - 2026-09-09
 
 ### Changed

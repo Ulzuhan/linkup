@@ -30,7 +30,7 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folders, err := h.folderService.List(session.Username, session.IsAdmin)
+	folders, err := h.folderService.List(session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -51,7 +51,7 @@ func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folder, err := h.folderService.Create(req.Name, req.Color, session.Username)
+	folder, err := h.folderService.Create(req.Name, req.Color, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -72,7 +72,7 @@ func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 		return
 	}
-	folder, err := h.folderService.Update(chi.URLParam(r, "id"), req, session.Username, session.IsAdmin)
+	folder, err := h.folderService.Update(chi.URLParam(r, "id"), req, session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -88,7 +88,7 @@ func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if err := h.folderService.Delete(id, session.Username, session.IsAdmin); err != nil {
+	if err := h.folderService.Delete(id, session.UserID, session.IsAdmin); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}

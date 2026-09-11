@@ -70,10 +70,10 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	currentUser := models.UserSession{}
 	if session != nil {
 		currentUser = *session
-		userLinks, err := h.linkService.ListByUser(session.Username, session.IsAdmin)
+		userLinks, err := h.linkService.ListByUser(session.UserID, session.IsAdmin)
 		if err == nil {
-			folders, _ = h.folderService.List(session.Username, session.IsAdmin)
-			domains, _ = h.domainService.List(session.Username, session.IsAdmin)
+			folders, _ = h.folderService.List(session.UserID, session.IsAdmin)
+			domains, _ = h.domainService.List(session.UserID, session.IsAdmin)
 
 			for _, l := range userLinks {
 				totalClicks += l.ClickCount
@@ -231,7 +231,7 @@ func (h *DashboardHandler) HandleCreateForm(w http.ResponseWriter, r *http.Reque
 		ABVariants:     abVariants,
 	}
 
-	link, stripped, err := h.linkService.Create(req, session.Username)
+	link, stripped, err := h.linkService.Create(req, session.UserID)
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/?error=%s", err.Error()), http.StatusSeeOther)
 		return

@@ -40,7 +40,7 @@ func (h *BulkHandler) BulkImport(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	result, err := h.csvService.ImportCSV(file, session.Username)
+	result, err := h.csvService.ImportCSV(file, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -61,7 +61,7 @@ func (h *BulkHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 
-	if err := h.csvService.ExportCSV(w, session.Username, session.IsAdmin); err != nil {
+	if err := h.csvService.ExportCSV(w, session.UserID, session.IsAdmin); err != nil {
 		http.Error(w, "Export failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

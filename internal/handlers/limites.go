@@ -36,7 +36,7 @@ func WriteRateLimit(
 				return
 			}
 
-			if !bucket.Allow(session.Username) {
+			if !bucket.Allow(session.UserID) {
 				w.Header().Set("Retry-After", "60")
 				sendJSON(w, http.StatusTooManyRequests, map[string]string{
 					"error": "Too many writes. Slow down and try again shortly.",

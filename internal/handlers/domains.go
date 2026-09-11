@@ -30,7 +30,7 @@ func (h *DomainHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	domains, err := h.domainService.List(session.Username, session.IsAdmin)
+	domains, err := h.domainService.List(session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -51,7 +51,7 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	domain, err := h.domainService.Create(req.Domain, session.Username)
+	domain, err := h.domainService.Create(req.Domain, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -68,7 +68,7 @@ func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if err := h.domainService.Delete(id, session.Username, session.IsAdmin); err != nil {
+	if err := h.domainService.Delete(id, session.UserID, session.IsAdmin); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}

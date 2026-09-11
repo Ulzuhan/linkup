@@ -28,7 +28,7 @@ func (h *APIKeyHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keys, err := h.apiKeyService.List(session.Username, session.IsAdmin)
+	keys, err := h.apiKeyService.List(session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -49,7 +49,7 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, rawSecret, err := h.apiKeyService.Create(req.Name, session.Username)
+	apiKey, rawSecret, err := h.apiKeyService.Create(req.Name, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -69,7 +69,7 @@ func (h *APIKeyHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if err := h.apiKeyService.Delete(id, session.Username, session.IsAdmin); err != nil {
+	if err := h.apiKeyService.Delete(id, session.UserID, session.IsAdmin); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}

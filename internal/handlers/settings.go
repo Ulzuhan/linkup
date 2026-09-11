@@ -50,9 +50,9 @@ func (h *SettingsHandler) ShowSettings(w http.ResponseWriter, r *http.Request) {
 	flashError := r.URL.Query().Get("error")
 	newKeySecret := r.URL.Query().Get("new_key")
 
-	apiKeys, _ := h.apiKeyService.List(session.Username, session.IsAdmin)
-	domains, _ := h.domainService.List(session.Username, session.IsAdmin)
-	webhooks, _ := h.webhookService.List(session.Username, session.IsAdmin)
+	apiKeys, _ := h.apiKeyService.List(session.UserID, session.IsAdmin)
+	domains, _ := h.domainService.List(session.UserID, session.IsAdmin)
+	webhooks, _ := h.webhookService.List(session.UserID, session.IsAdmin)
 
 	data := models.SettingsData{
 		User:          *session,
@@ -100,7 +100,7 @@ func (h *SettingsHandler) CreateAPIKeyForm(w http.ResponseWriter, r *http.Reques
 	_ = r.ParseForm()
 	name := strings.TrimSpace(r.FormValue("name"))
 
-	_, secret, err := h.apiKeyService.Create(name, session.Username)
+	_, secret, err := h.apiKeyService.Create(name, session.UserID)
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/settings?error=%s", err.Error()), http.StatusSeeOther)
 		return
@@ -120,7 +120,7 @@ func (h *SettingsHandler) CreateDomainForm(w http.ResponseWriter, r *http.Reques
 	_ = r.ParseForm()
 	domain := strings.TrimSpace(r.FormValue("domain"))
 
-	_, err = h.domainService.Create(domain, session.Username)
+	_, err = h.domainService.Create(domain, session.UserID)
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/settings?error=%s", err.Error()), http.StatusSeeOther)
 		return
@@ -148,7 +148,7 @@ func (h *SettingsHandler) CreateWebhookForm(w http.ResponseWriter, r *http.Reque
 		Events: events,
 	}
 
-	_, err = h.webhookService.Create(req, session.Username)
+	_, err = h.webhookService.Create(req, session.UserID)
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/settings?error=%s", err.Error()), http.StatusSeeOther)
 		return

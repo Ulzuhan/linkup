@@ -219,7 +219,43 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 	if err := a.saveOIDCSession(ctx, session, claims.SID, oauth2Token); err != nil {
 		return nil, err
 	}
+	a.adoptLegacyOwner(ctx, session)
 	return session, nil
+}
+
+// adoptLegacyOwner moves what LinkUp stored under the login name (how it
+// identified people before 0.6.0: preferred_username, else email) to the OIDC
+// subject, the first time that person signs in after the upgrade. The subject
+// is the stable key: an email can change, a subject cannot. Idempotent, and a
+// no-op once nothing is left under the old names.
+func (a *AuthService) adoptLegacyOwner(ctx context.Context, session *models.UserSession) {
+	if a.db == nil || session.UserID == "" {
+		return
+	}
+	var moved int64
+	for _, old := range []string{session.Username, session.Email} {
+		if old == "" || old == session.UserID {
+			continue
+		}
+		for _, q := range []string{
+			`UPDATE links SET created_by = ? WHERE created_by = ?`,
+			`UPDATE folders SET created_by = ? WHERE created_by = ?`,
+			`UPDATE custom_domains SET created_by = ? WHERE created_by = ?`,
+			`UPDATE api_keys SET user_id = ? WHERE user_id = ?`,
+			`UPDATE webhooks SET user_id = ? WHERE user_id = ?`,
+		} {
+			res, err := a.db.ExecContext(ctx, q, session.UserID, old)
+			if err != nil {
+				log.Printf("[AUTH] adopting rows owned by %q: %v", old, err)
+				return
+			}
+			n, _ := res.RowsAffected()
+			moved += n
+		}
+	}
+	if moved > 0 {
+		log.Printf("[AUTH] %d row(s) owned by login name now belong to subject %s", moved, session.UserID)
+	}
 }
 
 // SetSessionCookie encrypts and sets session cookie

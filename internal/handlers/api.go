@@ -73,7 +73,7 @@ func (h *APIHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link, strippedParams, err := h.linkService.Create(req, session.Username)
+	link, strippedParams, err := h.linkService.Create(req, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -100,7 +100,7 @@ func (h *APIHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	links, err := h.linkService.ListByUser(session.Username, session.IsAdmin)
+	links, err := h.linkService.ListByUser(session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to fetch links"})
 		return
@@ -127,7 +127,7 @@ func (h *APIHandler) GetLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !session.IsAdmin && link.CreatedBy != session.Username {
+	if !session.IsAdmin && link.CreatedBy != session.UserID {
 		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
 		return
 	}
@@ -153,7 +153,7 @@ func (h *APIHandler) LinkQR(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusNotFound, map[string]string{"error": "Link not found"})
 		return
 	}
-	if !session.IsAdmin && link.CreatedBy != session.Username {
+	if !session.IsAdmin && link.CreatedBy != session.UserID {
 		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
 		return
 	}
@@ -205,7 +205,7 @@ func (h *APIHandler) UpdateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.linkService.Update(id, req, session.Username, session.IsAdmin)
+	updated, err := h.linkService.Update(id, req, session.UserID, session.IsAdmin)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
@@ -223,7 +223,7 @@ func (h *APIHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := chi.URLParam(r, "id")
-	if err := h.linkService.Delete(id, session.Username, session.IsAdmin); err != nil {
+	if err := h.linkService.Delete(id, session.UserID, session.IsAdmin); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}

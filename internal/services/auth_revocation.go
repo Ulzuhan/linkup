@@ -154,8 +154,10 @@ func (a *AuthService) AuthorizeAPIKey(ctx context.Context, session *models.UserS
 	if a.db == nil {
 		return errAccessRevoked
 	}
+	// Keys created before 0.6.0 carry the login name in user_id; keys created
+	// since carry the OIDC subject. Either must find the owner's live login.
 	proof := &models.UserSession{Username: session.Username}
-	if err := a.db.QueryRowContext(ctx, `SELECT id, subject FROM oidc_sessions WHERE username = ? AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, session.Username, time.Now().Unix()).
+	if err := a.db.QueryRowContext(ctx, `SELECT id, subject FROM oidc_sessions WHERE (subject = ? OR username = ?) AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, session.UserID, session.Username, time.Now().Unix()).
 		Scan(&proof.SessionID, &proof.UserID); err != nil {
 		return errAccessRevoked
 	}

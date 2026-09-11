@@ -5,6 +5,30 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-11
+
+### Changed
+
+- **People are identified by the OIDC subject, not by the login name.** Links,
+  folders, custom domains, API keys and webhooks are now owned by the `sub`
+  claim. Until 0.5.2 the owner column held `preferred_username` (or the email
+  when the provider sent none), so a person who changed their email at the
+  provider lost sight of everything they had created. The subject never
+  changes. The account menu still shows the login name.
+- Rows created before 0.6.0 are adopted automatically: the first time a person
+  signs in, whatever was stored under their login name or email moves to their
+  subject. Rows under a login name that no longer exists (a provider migration
+  that renamed people) need one SQL statement per name, with the service
+  stopped: `UPDATE links SET created_by = '<subject>' WHERE created_by = '<old
+  name>'`, and the same for `folders`, `custom_domains` (`created_by`),
+  `api_keys` and `webhooks` (`user_id`).
+
+### Fixed
+
+- API keys created before 0.6.0 keep working: the live-login check behind each
+  key looks the owner up by subject **or** by login name.
+
+
 ## [0.5.2] - 2026-09-09
 
 ### Added

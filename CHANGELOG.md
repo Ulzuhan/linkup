@@ -5,6 +5,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-15
+
+### Fixed
+
+- **The page no longer scrolls sideways at 320 px.** The feature cards sat on
+  a `repeat(auto-fit, minmax(19rem, 1fr))` track, and a track minimum is a
+  floor the grid will overflow its container to honour: on the narrowest
+  phone the card came out 304 px wide inside a 286 px column and pushed the
+  document one pixel past the viewport. Every `auto-fit` track now takes its
+  minimum through `min(…, 100%)`, which keeps the intended width whenever
+  there is room and collapses to the column when there is not. Swept from
+  320 to 1920 px, clean at every width.
+
 ## [0.7.0] - 2026-09-15
 
 ### Changed

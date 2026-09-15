@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -157,6 +158,111 @@ func TestHTTPRedirectFlow(t *testing.T) {
 	// Verify privacy headers
 	if rr.Header().Get("Referrer-Policy") != "no-referrer" {
 		t.Errorf("expected Referrer-Policy no-referrer")
+	}
+}
+
+// A link that has ended is not a link that never existed: the visitor gets
+// 410 and the reason, not 404. This used to answer 404 for every ended link
+// because Resolve returns the link together with an error and the handler
+// read the error first.
+func TestHTTPEndedLinkAnswers410WithReason(t *testing.T) {
+	router, linkService, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	patch := func(t *testing.T, id, body string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPatch, "/api/links/"+id, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req) // dev mode: a session for free
+		if rr.Code != http.StatusOK {
+			t.Fatalf("PATCH %s: %d %s", body, rr.Code, rr.Body.String())
+		}
+	}
+	past := time.Now().Add(-1 * time.Hour).Unix()
+	two := 2
+
+	for _, tc := range []struct {
+		name      string
+		slug      string
+		maxClicks *int
+		end       func(t *testing.T, link *models.Link)
+		want      string
+	}{
+		{
+			name: "expires_at in the past",
+			slug: "ended-by-time",
+			end:  func(t *testing.T, l *models.Link) { patch(t, l.ID, fmt.Sprintf(`{"expires_at":%d}`, past)) },
+			want: "This link has expired based on its scheduled time limit.",
+		},
+		{
+			name: "paused by its owner",
+			slug: "ended-by-pause",
+			end:  func(t *testing.T, l *models.Link) { patch(t, l.ID, `{"is_active":false}`) },
+			want: "This link has been deactivated by its owner.",
+		},
+		{
+			name:      "click budget spent",
+			slug:      "ended-by-budget",
+			maxClicks: &two,
+			end: func(t *testing.T, l *models.Link) {
+				// The second and last click of the budget. Clicks are
+				// recorded asynchronously, so the 410 is awaited below.
+				if rr := get(t, router, "/"+l.Slug); rr.Code != http.StatusFound {
+					t.Fatalf("last click: %d, want 302", rr.Code)
+				}
+			},
+			want: "This link has self-destructed after reaching its maximum click budget.",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			link, _, err := linkService.Create(models.CreateLinkRequest{
+				URL:        "https://example.com/" + tc.slug,
+				CustomSlug: tc.slug,
+				MaxClicks:  tc.maxClicks,
+			}, "dev-user-id")
+			if err != nil {
+				t.Fatalf("create: %v", err)
+			}
+			if rr := get(t, router, "/"+tc.slug); rr.Code != http.StatusFound {
+				t.Fatalf("before ending: %d, want 302", rr.Code)
+			}
+
+			tc.end(t, link)
+
+			// The click that ends the budget lands asynchronously, so the
+			// first 410 is awaited. Then twice on purpose: an update refreshes
+			// the link in the cache, so one request finds it there and Resolve
+			// evicts it, and the next goes to the database. Both paths must
+			// be 410.
+			deadline := time.Now().Add(5 * time.Second)
+			rr := get(t, router, "/"+tc.slug)
+			for rr.Code != http.StatusGone && time.Now().Before(deadline) {
+				time.Sleep(10 * time.Millisecond)
+				rr = get(t, router, "/"+tc.slug)
+			}
+			for i, rr := range []*httptest.ResponseRecorder{rr, get(t, router, "/"+tc.slug)} {
+				if rr.Code != http.StatusGone {
+					t.Fatalf("request %d: %d, want 410", i+1, rr.Code)
+				}
+				body := rr.Body.String()
+				if !strings.Contains(body, "410 - Link Expired") || !strings.Contains(body, tc.want) {
+					t.Errorf("request %d: page lacks the reason %q", i+1, tc.want)
+				}
+				if strings.Contains(body, "does not exist") {
+					t.Errorf("request %d: page reads as a missing link", i+1)
+				}
+			}
+		})
+	}
+
+	// A slug nobody ever created is still a 404.
+	rr := get(t, router, "/never-existed")
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("missing link: %d, want 404", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "does not exist") {
+		t.Errorf("missing link page lacks the 404 wording")
 	}
 }
 

@@ -5,6 +5,15 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **An ended link answers 410 with its reason, not 404.** A link that had
+  expired, been paused by its owner or spent its click budget was answered
+  with 404 "Link Not Found", as if it had never existed: the resolver hands
+  the link back together with an error in that case, and the redirect handler
+  read the error first, so the 410 page was never reached. The 404 stays for a
+  slug nobody created.
+
 ## [0.6.0] - 2026-09-11
 
 ### Changed

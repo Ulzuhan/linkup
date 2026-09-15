@@ -74,6 +74,24 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	link, err := h.linkService.Resolve(domain, slug)
+
+	// Resolve hands the link back TOGETHER WITH an error when it exists but
+	// has ended (expired, paused, or click budget spent), so the link has to
+	// be looked at before the error is: an ended link is a 410 with its
+	// reason, and only a link that never existed is a 404.
+	if link != nil && link.IsExpired() {
+		w.WriteHeader(http.StatusGone)
+		_ = h.renderer.Render(w, "error.html", map[string]interface{}{
+			"User":       h.cabecera(r),
+			"Title":      "Link Expired",
+			"Heading":    "410 - Link Expired",
+			"Message":    link.ExpiryReason(),
+			"StatusCode": 410,
+			"QRForgeURL": h.cfg.QRForgeURL,
+		})
+		return
+	}
+
 	if err != nil || link == nil {
 		w.WriteHeader(http.StatusNotFound)
 		_ = h.renderer.Render(w, "error.html", map[string]interface{}{
@@ -82,20 +100,6 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 			"Heading":    "404 - Link Not Found",
 			"Message":    "The shortened link you requested does not exist or has been removed.",
 			"StatusCode": 404,
-			"QRForgeURL": h.cfg.QRForgeURL,
-		})
-		return
-	}
-
-	// Check expiration
-	if link.IsExpired() {
-		w.WriteHeader(http.StatusGone)
-		_ = h.renderer.Render(w, "error.html", map[string]interface{}{
-			"User":       h.cabecera(r),
-			"Title":      "Link Expired",
-			"Heading":    "410 - Link Expired",
-			"Message":    link.ExpiryReason(),
-			"StatusCode": 410,
 			"QRForgeURL": h.cfg.QRForgeURL,
 		})
 		return

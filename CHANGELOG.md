@@ -5,6 +5,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-15
+
 ### Fixed
 
 - **An ended link answers 410 with its reason, not 404.** A link that had

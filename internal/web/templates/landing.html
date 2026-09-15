@@ -1,60 +1,129 @@
 {{define "content"}}
-<div class="kc-product-landing lk-landing">
-  <section class="lk-hero">
-    <div class="lk-hero-grid">
-      <div class="lk-hero-copy">
-      <span class="lk-eyebrow rounded-full">Open source · self-hosted</span>
-      <h1>A short link that does not watch who clicks it.</h1>
-      <p class="lk-lede">Most shorteners are surveillance with a convenience feature attached. This one keeps the convenience: it strips the tracking parameters from your destination, leaves the ones the page needs, and never reads the address of the person who clicked.</p>
-      <div class="lk-cta">
-        <a href="/auth/login" class="btn btn-primary">Sign in</a>
-        {{if .EnrollURL}}<a href="{{.EnrollURL}}" class="btn btn-secondary" target="_blank" rel="noopener">Ask for access ↗</a>{{end}}
+<div class="landing" id="landing">
+  <section class="hero">
+    <div class="hero-in">
+      <p class="kicker kicker-row"><span>Open source</span><span>Self-hosted</span><span>Zero tracking</span></p>
+      <h1 class="hero-title">A short link that <em>does not watch</em> who clicks it.</h1>
+      <p class="hero-lede">Most shorteners are surveillance with a convenience feature attached. This one keeps the convenience: it strips the tracking parameters from your destination, leaves the ones the page needs, and never reads the address of the person who clicked.</p>
+      <div class="hero-cta">
+        <a href="/auth/login" class="btn btn-primary btn-lg">Sign in<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+        {{if .EnrollURL}}<a href="{{.EnrollURL}}" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Ask for access<svg class="i" aria-hidden="true"><use href="#i-external"/></svg></a>{{end}}
+        <a href="https://github.com/Ulzuhan/linkup" class="btn btn-ghost btn-lg" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-github"/></svg>Source</a>
       </div>
-      </div>
-      <figure class="lk-demo" aria-label="What happens to a link">
-        <div class="lk-demo-row"><span class="lk-demo-tag">you paste</span><code>example.com/post?<mark>utm_source=newsletter</mark>&amp;<mark>fbclid=IwAR…</mark>&amp;id=7</code></div>
-        <div class="lk-demo-row"><span class="lk-demo-tag">it keeps</span><code>example.com/post?id=7</code></div>
-        <figcaption>The parameter the page needs stays. The ones that follow you do not.</figcaption>
-      </figure>
     </div>
   </section>
 
-  <section class="lk-features">
-    <h2 class="uppercase">What it does</h2>
-    <div class="kc-card-grid">
-      <article>
-        <h3>Strips the tracking, keeps the link working</h3>
-        <p>Removing query parameters is easy; removing only the ones that track you and leaving the ones the page needs is the whole job. Checked at paste time, before anything is stored.</p>
-      </article>
-      <article>
-        <h3>Nobody is counted twice</h3>
-        <p>No IP address is read — not logged, not hashed, not counted. Counters are aggregate: total clicks and when the last one happened. Nothing that reconstructs who went where.</p>
-      </article>
-      <article>
-        <h3>Routes by device, not by person</h3>
-        <p>One link, an App Store target for iOS and a Play Store target for Android, or an A/B split. The User-Agent is read in flight to decide and never stored.</p>
-      </article>
-      <article>
-        <h3>Links that end themselves</h3>
-        <p>A PIN in front, an expiry date, or a click budget after which the link self-destructs. The unlock attempts are limited per link, not per visitor — because there is no visitor to limit.</p>
-      </article>
-      <article>
-        <h3>Your own domains</h3>
-        <p>Point a domain you own at it and short links come out under your name. Several at once, if you keep projects apart.</p>
-      </article>
-      <article>
-        <h3>Made to be scripted</h3>
-        <p>API keys for a CLI, a bot or an editor plugin, bulk import from CSV, export back out, and HMAC-signed webhooks when a link is created or runs out.</p>
-      </article>
+  {{/* The argument, made interactive. This demo runs entirely in the
+       browser with the same rules as the server's cleaner, so nothing
+       typed here is sent anywhere. */}}
+  <section class="band" aria-labelledby="demo-title">
+    <div class="band-in">
+      <div class="band-head">
+        <h2 class="band-title" id="demo-title"><span class="num">01</span>See what comes off</h2>
+        <span class="label label-ok"><svg class="i" aria-hidden="true"><use href="#i-eye-off"/></svg>Runs in your browser</span>
+      </div>
+      <div class="demo" id="demo">
+        <label class="sr-only" for="demo-url">A URL to clean</label>
+        <div class="pastebar">
+          <input type="text" id="demo-url" class="pastebar-input" value="https://example.com/post?utm_source=newsletter&utm_medium=email&fbclid=IwAR2x9&id=7" spellcheck="false" inputmode="url" autocomplete="off">
+        </div>
+        <div class="strip strip-open" id="demo-strip">
+          <div class="strip-row">
+            <span class="strip-k">You paste</span>
+            <code class="strip-v" id="demo-original"></code>
+          </div>
+          <div class="strip-row">
+            <span class="strip-k">It keeps</span>
+            <code class="strip-v strip-clean" id="demo-clean"></code>
+          </div>
+          <div class="strip-foot">
+            <span class="strip-count" id="demo-count"></span>
+            <span class="strip-badges" id="demo-badges"></span>
+          </div>
+        </div>
+        <div class="demo-foot">
+          <div class="demo-examples" role="group" aria-label="Try another">
+            <span class="hint">Try</span>
+            <button type="button" class="quick-btn" data-demo="https://shop.example.com/item/42?gclid=CjwKCA&ref_=nav_top&color=blue">a shop link</button>
+            <button type="button" class="quick-btn" data-demo="https://open.example.com/track/3k1?si=9f8e7d6c">a share link</button>
+            <button type="button" class="quick-btn" data-demo="https://blog.example.com/why?mc_cid=abc&mc_eid=def&_hsenc=p2A&page=2">a newsletter link</button>
+          </div>
+          <p class="hint">Nothing typed here is sent or stored. The parameter the page needs stays; the ones that follow you do not.</p>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="lk-closing">
-    <h2>Use this one, or run your own</h2>
-    <p>Accounts here are approved one by one by a person. The service is one static binary with its dashboard inside and a SQLite file — the image is built from a tagged commit, scanned before release, and published with provenance.</p>
-    <div class="lk-cta lk-cta-center">
-      <a href="/auth/login" class="btn btn-primary">Sign in</a>
-      <a href="https://github.com/Ulzuhan/linkup" class="btn btn-secondary" target="_blank" rel="noopener">Source on GitHub ↗</a>
+  <section class="band" aria-labelledby="promise-title">
+    <div class="band-in">
+      <div class="band-head">
+        <h2 class="band-title" id="promise-title"><span class="num">02</span>What “privacy-first” means here, precisely</h2>
+        <p class="band-sub">Vague promises are worthless, so here is the exact shape of it.</p>
+      </div>
+      <ol class="promise-list">
+        <li><strong>A visitor's IP address is never read.</strong> Not logged, not hashed, not counted. There is no <code>RemoteAddr</code> in the codebase.</li>
+        <li><strong>The User-Agent is inspected in flight</strong> when a link has device-specific destinations, and never stored.</li>
+        <li><strong>No cookies for visitors.</strong> A cookie is only ever set for someone signing in to the dashboard.</li>
+        <li><strong>Counters are aggregate:</strong> total clicks and the timestamp of the last one. Nothing that can reconstruct who went where.</li>
+        <li><strong>Tracking parameters are stripped,</strong> and only those: <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_eid</code> and their kind go; <code>id=7</code> stays.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="features-title">
+    <div class="band-in">
+      <div class="band-head">
+        <h2 class="band-title" id="features-title"><span class="num">03</span>What it does</h2>
+        <p class="band-sub">Everything a shortener is for, and nothing that needs to know who you are.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-scissors"/></svg>Strips the tracking, keeps the link working</h3>
+          <p>Removing query parameters is easy. Removing only the ones that track you, and leaving the ones the page needs, is the whole job. Checked as you paste, before anything is stored.</p>
+        </article>
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-eye-off"/></svg>Nobody is counted twice</h3>
+          <p>No IP address is read. Counters are aggregate: total clicks and when the last one happened. Nothing that reconstructs who went where.</p>
+        </article>
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-split"/></svg>Routes by device, not by person</h3>
+          <p>One link, an App Store target for iOS and a Play Store target for Android, or an A/B split. The User-Agent is read in flight to decide, and never stored.</p>
+        </article>
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-hourglass"/></svg>Links that end themselves</h3>
+          <p>A PIN in front, an expiry date, or a click budget after which the link self-destructs. Unlock attempts are limited per link, not per visitor, because there is no visitor to limit.</p>
+        </article>
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg>Your own domains</h3>
+          <p>Point a domain you own at it and short links come out under your name. Several at once, if you keep projects apart.</p>
+        </article>
+        <article class="feature">
+          <h3><svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>Made to be scripted</h3>
+          <p>API keys for a CLI, a bot or an editor plugin, bulk import from CSV, export back out, and HMAC-signed webhooks when a link is created or runs out.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band hood" aria-label="Under the hood">
+    <div class="band-in">
+      <dl class="hood-list">
+        <div><dt>One static binary</dt><dd>Go, no CGO, dashboard embedded. Nothing else to deploy.</dd></div>
+        <div><dt>One SQLite file</dt><dd>WAL mode, pure-Go driver. Back it up by copying it.</dd></div>
+        <div><dt>≈230 ns per warm redirect</dt><dd>One allocation. Measured, and honestly a footnote against the network.</dd></div>
+        <div><dt>Capped at 128 MB</dt><dd>The container never gets near it. Scanned before release, published with provenance.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="band closing" aria-labelledby="closing-title">
+    <div class="band-in closing-in">
+      <h2 class="closing-title" id="closing-title">Use this one, <em>or run your own.</em></h2>
+      <p class="closing-text">Accounts here are approved one by one by a person. The service is one static binary with its dashboard inside and a SQLite file: the image is built from a tagged commit, scanned before release, and published with provenance.</p>
+      <div class="hero-cta hero-cta-center">
+        <a href="/auth/login" class="btn btn-primary btn-lg">Sign in<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+        <a href="https://github.com/Ulzuhan/linkup" class="btn btn-secondary btn-lg" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-github"/></svg>Source on GitHub</a>
+      </div>
     </div>
   </section>
 </div>

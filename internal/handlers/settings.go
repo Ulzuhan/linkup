@@ -72,7 +72,9 @@ func (h *SettingsHandler) ShowSettings(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	_ = h.renderer.Render(w, "settings.html", map[string]interface{}{
-		"Title":         "Settings & Integrations",
+		"Title":         "Settings",
+		"Nav":           "settings",
+		"Shell":         "app",
 		"User":          data.User,
 		"APIKeys":       data.APIKeys,
 		"CustomDomains": data.CustomDomains,

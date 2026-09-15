@@ -1,45 +1,48 @@
 {{define "content"}}
-<div class="kc-workspace lk-public">
-  <div class="container lk-narrow-sm">
-    <div class="card lk-public-card">
-      <h1>Where this link goes</h1>
-      <p class="lk-public-sub">The destination, with the tracking parameters already removed. Nothing about you was read to show it.</p>
+<div class="public">
+  <div class="slip">
+    <p class="kicker">Destination preview</p>
+    <h1 class="slip-title">Where this link goes</h1>
+    <p class="slip-sub">The destination, with the tracking parameters already removed. Nothing about you was read to show it.</p>
 
-      <div class="lk-dest-box">
-        <div class="lk-dest-label">Destination</div>
-        <div class="mono lk-dest-target">{{.CleanURL}}</div>
-        <div class="lk-badges">
-          <span class="badge-privacy">https only</span>
-          <span class="badge-privacy">No visitor tracking</span>
-          {{if .HasPIN}}<span class="status-pill status-locked">PIN protected</span>{{end}}
-        </div>
+    <div class="dest">
+      <span class="dest-label">Short link</span>
+      <p class="dest-short mono">{{.BaseDomain}}/{{.Slug}}</p>
+      <span class="dest-label">Goes to</span>
+      <div class="dest-row">
+        <p class="dest-url mono"><span class="dest-host">{{hostOf .CleanURL}}</span><span class="dest-rest">{{restOf .CleanURL}}</span></p>
+        <button type="button" class="iconbtn iconbtn-sm copy-btn" data-copy="{{.CleanURL}}" aria-label="Copy the destination" title="Copy the destination"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button>
       </div>
-
-      {{if .StrippedParams}}
-        <div class="lk-stripped">
-          <div class="lk-stripped-title">Tracking parameters removed ({{len .StrippedParams}}):</div>
-          <div>{{range .StrippedParams}}<span class="tracker-badge">{{.}}</span>{{end}}</div>
-        </div>
-      {{end}}
-
-      {{if .IsExpired}}
-        <div class="flash flash-err lk-center">
-          <strong>This link has expired</strong>
-          <p class="lk-sm">{{.ExpiryReason}}</p>
-        </div>
-      {{else}}
-        <div class="lk-public-actions">
-          {{if .HasPIN}}
-            <a href="/pin/{{.Slug}}" class="btn btn-primary btn-lg">Unlock with PIN</a>
-          {{else}}
-            <a href="/{{.Slug}}?direct=true" class="btn btn-primary btn-lg">Continue to destination</a>
-          {{end}}
-          {{if .QRForgeLink}}
-            <a href="{{.QRForgeLink}}" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">QR code in QR-Forge ↗</a>
-          {{end}}
-        </div>
-      {{end}}
+      <div class="dest-pills">
+        <span class="label label-ok"><svg class="i" aria-hidden="true"><use href="#i-eye-off"/></svg>No visitor tracking</span>
+        {{if .HasPIN}}<span class="label label-warn"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>PIN protected</span>{{end}}
+      </div>
     </div>
+
+    {{if .StrippedParams}}
+    <div class="stripped">
+      <p class="stripped-title"><svg class="i" aria-hidden="true"><use href="#i-scissors"/></svg>{{len .StrippedParams}} tracking {{if eq (len .StrippedParams) 1}}parameter{{else}}parameters{{end}} cut</p>
+      <div class="strip-badges">{{range .StrippedParams}}<span class="q q-strip">{{.}}</span>{{end}}</div>
+    </div>
+    {{else}}
+    <p class="hint">This destination carried no tracking parameters.</p>
+    {{end}}
+
+    {{if .IsExpired}}
+    <div class="notice notice-err" role="status">
+      <svg class="i" aria-hidden="true"><use href="#i-hourglass"/></svg>
+      <p><strong>This link has ended.</strong> {{.ExpiryReason}}</p>
+    </div>
+    {{else}}
+    <div class="slip-actions">
+      {{if .HasPIN}}
+      <a href="/pin/{{.Slug}}" class="btn btn-primary btn-lg"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Unlock with PIN</a>
+      {{else}}
+      <a href="/{{.Slug}}?direct=true" class="btn btn-primary btn-lg">Continue to destination<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+      {{end}}
+      {{if .QRForgeURL}}<a href="{{.QRForgeLink}}" target="_blank" rel="noopener" class="btn btn-secondary btn-lg"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg>QR code in QR-Forge</a>{{end}}
+    </div>
+    {{end}}
   </div>
 </div>
 {{end}}

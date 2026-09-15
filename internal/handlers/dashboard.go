@@ -61,6 +61,9 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	var domains []models.CustomDomain
 	var totalClicks int
 	var totalLinks int
+	var activeLinks, protectedLinks, totalStripped int
+	var lastClickAt int64
+	folderCounts := map[string]int{}
 
 	flashSuccess := r.URL.Query().Get("success")
 	flashError := r.URL.Query().Get("error")
@@ -77,6 +80,27 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 			for _, l := range userLinks {
 				totalClicks += l.ClickCount
+
+				// The tiles at the top read the whole collection, not the
+				// filtered view: a folder with three links still sits under
+				// the same totals.
+				if !l.IsExpired() {
+					activeLinks++
+				}
+				if l.HasPIN || (l.ExpiresAt != nil && *l.ExpiresAt > 0) || (l.MaxClicks != nil && *l.MaxClicks > 0) {
+					protectedLinks++
+				}
+				if l.LastClickedAt != nil && *l.LastClickedAt > lastClickAt {
+					lastClickAt = *l.LastClickedAt
+				}
+				if l.FolderID != nil {
+					folderCounts[*l.FolderID]++
+				}
+				// What was stripped is not stored — only the result is — so
+				// it is recomputed from the original. Cheap: a parse per link.
+				if _, stripped, err := services.CleanURL(l.OriginalURL, h.cfg.PublicHost); err == nil {
+					totalStripped += len(stripped)
+				}
 
 				// Apply folder filter
 				if folderFilter != "" && (l.FolderID == nil || *l.FolderID != folderFilter) {
@@ -104,43 +128,55 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := models.DashboardData{
-		User:          currentUser,
-		Links:         links,
-		Folders:       folders,
-		CustomDomains: domains,
-		CurrentFolder: folderFilter,
-		CurrentTag:    tagFilter,
-		TotalLinks:    totalLinks,
-		TotalClicks:   totalClicks,
-		PublicHost:    h.cfg.PublicHost,
-		DefaultDomain: h.cfg.DefaultDomain,
-		QRForgeURL:    h.cfg.QRForgeURL,
-		AccountURL:    h.cfg.AccountURL,
-		EnrollURL:     h.cfg.EnrollURL,
-		IsAdmin:       currentUser.IsAdmin,
-		FlashSuccess:  flashSuccess,
-		FlashError:    flashError,
+		User:           currentUser,
+		Links:          links,
+		Folders:        folders,
+		CustomDomains:  domains,
+		CurrentFolder:  folderFilter,
+		CurrentTag:     tagFilter,
+		TotalLinks:     totalLinks,
+		TotalClicks:    totalClicks,
+		ActiveLinks:    activeLinks,
+		ProtectedLinks: protectedLinks,
+		TotalStripped:  totalStripped,
+		LastClickAt:    lastClickAt,
+		FolderCounts:   folderCounts,
+		PublicHost:     h.cfg.PublicHost,
+		DefaultDomain:  h.cfg.DefaultDomain,
+		QRForgeURL:     h.cfg.QRForgeURL,
+		AccountURL:     h.cfg.AccountURL,
+		EnrollURL:      h.cfg.EnrollURL,
+		IsAdmin:        currentUser.IsAdmin,
+		FlashSuccess:   flashSuccess,
+		FlashError:     flashError,
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = h.renderer.Render(w, "dashboard.html", map[string]interface{}{
-		"Title":         "Dashboard",
-		"User":          data.User,
-		"Links":         data.Links,
-		"Folders":       data.Folders,
-		"CustomDomains": data.CustomDomains,
-		"CurrentFolder": data.CurrentFolder,
-		"CurrentTag":    data.CurrentTag,
-		"TotalLinks":    data.TotalLinks,
-		"TotalClicks":   data.TotalClicks,
-		"PublicHost":    data.PublicHost,
-		"DefaultDomain": data.DefaultDomain,
-		"QRForgeURL":    data.QRForgeURL,
-		"AccountURL":    data.AccountURL,
-		"EnrollURL":     data.EnrollURL,
-		"IsAdmin":       data.IsAdmin,
-		"FlashSuccess":  data.FlashSuccess,
-		"FlashError":    data.FlashError,
+		"Title":          "Dashboard",
+		"User":           data.User,
+		"Links":          data.Links,
+		"Folders":        data.Folders,
+		"CustomDomains":  data.CustomDomains,
+		"CurrentFolder":  data.CurrentFolder,
+		"CurrentTag":     data.CurrentTag,
+		"Nav":            "links",
+		"Shell":          "app",
+		"TotalLinks":     data.TotalLinks,
+		"TotalClicks":    data.TotalClicks,
+		"ActiveLinks":    data.ActiveLinks,
+		"ProtectedLinks": data.ProtectedLinks,
+		"TotalStripped":  data.TotalStripped,
+		"LastClickAt":    data.LastClickAt,
+		"FolderCounts":   data.FolderCounts,
+		"PublicHost":     data.PublicHost,
+		"DefaultDomain":  data.DefaultDomain,
+		"QRForgeURL":     data.QRForgeURL,
+		"AccountURL":     data.AccountURL,
+		"EnrollURL":      data.EnrollURL,
+		"IsAdmin":        data.IsAdmin,
+		"FlashSuccess":   data.FlashSuccess,
+		"FlashError":     data.FlashError,
 	})
 }
 

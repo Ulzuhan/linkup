@@ -1,435 +1,434 @@
+{{define "sidebar"}}
+<div class="side-block">
+  <h2 class="side-title">Folders</h2>
+  <nav class="side-list" aria-label="Folders">
+    <a href="/" class="side-item" {{if and (not .CurrentFolder) (not .CurrentTag)}}aria-current="page"{{end}}><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span class="side-item-text">All links</span><span class="side-n">{{num .TotalLinks}}</span></a>
+    {{range .Folders}}
+    <a href="/?folder={{.ID}}" class="side-item" {{if eq $.CurrentFolder .ID}}aria-current="page"{{end}}><svg class="dot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="{{.Color}}"/></svg><span class="side-item-text">{{.Name}}</span><span class="side-n">{{index $.FolderCounts .ID}}</span></a>
+    {{end}}
+    <button type="button" class="side-item side-add add-folder-btn" id="add-folder-btn"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span class="side-item-text">New folder</span></button>
+  </nav>
+</div>
+{{end}}
+
 {{define "content"}}
-<div class="kc-workspace">
-<div class="container">
-  <div class="lk-page-head">
-    <div>
-      <h1>Your links</h1>
-      <p class="lk-page-sub">Paste a URL. What tracks the reader is stripped before it is stored.</p>
+<div class="page">
+  <div class="page-head">
+    <div class="page-head-copy">
+      <p class="kicker">Your links</p>
+      <h1 class="page-title">{{if .CurrentFolder}}{{range .Folders}}{{if eq $.CurrentFolder .ID}}{{.Name}}{{end}}{{end}}{{else if .CurrentTag}}Tagged <span class="mono">#{{.CurrentTag}}</span>{{else}}All links{{end}}</h1>
     </div>
-    <span class="badge-privacy" title="No visitor address is ever read">Zero tracking</span>
-  </div>
-
-  <!-- Stats Section -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="stat-label">Links</span>
-      <span class="stat-value">{{.TotalLinks}}</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-label">Redirections</span>
-      <span class="stat-value lk-accent">{{.TotalClicks}}</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-label">Smart Routing</span>
-      <span class="stat-value lk-stat-small">Device · A/B</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-label">Default Domain</span>
-      <span class="stat-value mono lk-stat-small">{{.DefaultDomain}}</span>
+    <div class="page-head-end">
+      <span class="label label-ok" title="No visitor address is ever read"><svg class="i" aria-hidden="true"><use href="#i-eye-off"/></svg>Zero tracking</span>
+      <span class="label mono" title="Default domain for new links">{{.DefaultDomain}}</span>
     </div>
   </div>
 
-  {{if .FlashSuccess}}
-    <div class="flash flash-ok">
-      ✓ {{.FlashSuccess}}
-    </div>
-  {{end}}
+  {{template "notices" .}}
 
-  {{if .FlashError}}
-    <div class="flash flash-err">
-      ⚠ {{.FlashError}}
+  {{/* The figures: the whole collection in four numbers, whatever folder is
+       open. Serif numerals, like a newspaper's data strip. */}}
+  <dl class="figures" aria-label="Overview">
+    <div class="figure">
+      <dt>Links</dt>
+      <dd>{{num .TotalLinks}}</dd>
+      <p class="figure-sub">{{num .ActiveLinks}} answering right now</p>
     </div>
-  {{end}}
+    <div class="figure">
+      <dt>Clicks</dt>
+      <dd>{{num .TotalClicks}}</dd>
+      <p class="figure-sub">{{if .LastClickAt}}last one <time datetime="{{iso .LastClickAt}}" data-rel>{{date .LastClickAt}}</time>{{else}}none yet{{end}}</p>
+    </div>
+    <div class="figure figure-signal">
+      <dt>Trackers stripped</dt>
+      <dd>{{num .TotalStripped}}</dd>
+      <p class="figure-sub">parameters cut before storing</p>
+    </div>
+    <div class="figure">
+      <dt>Protected</dt>
+      <dd>{{num .ProtectedLinks}}</dd>
+      <p class="figure-sub">with a PIN, an expiry or a click budget</p>
+    </div>
+  </dl>
 
-  <!-- Create New Link Card -->
-  <div class="card mb-2">
-    <div class="lk-card-head">
-      <h2>Shorten a link</h2>
-      <span class="badge-privacy">Strips tracking parameters</span>
+  {{/* The composer. One field and one button; everything else waits behind
+       "Options", grouped by what it is for. The form posts without a script;
+       the live strip preview is the only thing the script adds. Field names
+       are the contract with HandleCreateForm. */}}
+  <section class="block composer-block" aria-labelledby="composer-title">
+    <div class="block-head">
+      <h2 class="block-title" id="composer-title"><span class="num">01</span>Shorten a link</h2>
+      <p class="block-sub">Tracking parameters are cut as you type. The page's own parameters stay.</p>
     </div>
 
-    <form method="POST" action="/links/create" id="create-link-form">
-      <div class="form-group">
-        <label for="target-url-input" class="form-label">Destination URL</label>
-        <input 
-          type="text" 
-          id="target-url-input" 
-          name="url" 
-          class="form-input mono" 
-          placeholder="https://example.com/article?utm_source=twitter&fbclid=IwAR123..." 
-          required
-          autocomplete="off"
-        >
+    <form method="POST" action="/links/create" id="create-link-form" class="composer" data-default-domain="{{.DefaultDomain}}" autocomplete="off">
+      <label class="sr-only" for="url">Destination URL</label>
+      <div class="pastebar">
+        <input type="text" id="url" name="url" class="pastebar-input" placeholder="Paste a link to shorten" required spellcheck="false" inputmode="url" enterkeyhint="go">
+        <button type="submit" class="btn btn-primary" id="create-submit">Shorten<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
       </div>
 
-      <!-- Live Tracking Stripper Preview Box -->
-      <div class="lk-stripper" id="stripper-preview-box" hidden>
-        <div class="lk-stripper-title">
-          <span>Trackers detected, to be stripped:</span>
+      <div class="strip" id="strip-preview" hidden aria-live="polite">
+        <div class="strip-row">
+          <span class="strip-k">Pasted</span>
+          <code class="strip-v" id="strip-original"></code>
         </div>
-        <div class="mb-05" id="stripped-tags"></div>
-        <div class="lk-muted-sm">
-          Stored as: <span id="clean-url-display" class="mono lk-accent"></span>
+        <div class="strip-row">
+          <span class="strip-k">Stored</span>
+          <code class="strip-v strip-clean" id="strip-clean"></code>
+        </div>
+        <div class="strip-foot">
+          <span class="strip-count" id="strip-count"></span>
+          <span class="strip-badges" id="strip-badges"></span>
         </div>
       </div>
+      <p class="strip-hint" id="strip-hint" hidden></p>
 
-      <!-- Advanced Options Accordion -->
-      <details class="lk-options">
-        <summary>
-          Options: PIN, expiry, domains and smart routing
+      <details class="options" id="composer-options">
+        <summary class="options-summary">
+          <svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>
+          <span class="options-title">Options</span>
+          <span class="options-hint">slug, domain, folder, PIN, expiry, routing</span>
+          <svg class="i options-caret" aria-hidden="true"><use href="#i-chevron-down"/></svg>
         </summary>
-        
-        <div class="lk-grid">
-          {{if .CustomDomains}}
-            <div class="form-group">
-              <label class="form-label">Domain</label>
-              <select name="domain" class="form-input">
-                <option value="">{{.DefaultDomain}} (Default)</option>
-                {{range .CustomDomains}}
-                  <option value="{{.Domain}}">{{.Domain}}</option>
-                {{end}}
+
+        <div class="options-grid">
+          <fieldset class="opt-group">
+            <legend class="opt-legend">Address</legend>
+            {{if .CustomDomains}}
+            <div class="field">
+              <label class="field-label" for="domain">Domain</label>
+              <select id="domain" name="domain" class="input input-mono">
+                <option value="">{{.DefaultDomain}}</option>
+                {{range .CustomDomains}}<option value="{{.Domain}}">{{.Domain}}</option>{{end}}
               </select>
             </div>
-          {{end}}
-
-          <div class="form-group">
-            <label class="form-label">Custom slug (optional)</label>
-            <div class="lk-slug-group">
-              <span class="mono lk-slug-prefix">/</span>
-              <input type="text" name="custom_slug" class="form-input mono lk-slug-input" placeholder="my-cool-link">
+            {{end}}
+            <div class="field">
+              <label class="field-label" for="custom_slug">Custom slug <span class="optional">optional</span></label>
+              <input type="text" id="custom_slug" name="custom_slug" class="input input-mono" placeholder="roadmap" minlength="2" maxlength="64" pattern="[A-Za-z0-9_-]{2,64}" title="2 to 64 letters, digits, hyphens or underscores">
+              <p class="hint">Short link: <span class="mono" id="slug-preview"></span></p>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Title (optional)</label>
-            <input type="text" name="title" class="form-input" placeholder="e.g. Q4 Roadmap Doc">
-          </div>
-
-          {{if .Folders}}
-            <div class="form-group">
-              <label class="form-label">Folder</label>
-              <select name="folder_id" class="form-input">
-                <option value="">No Folder (General)</option>
-                {{range .Folders}}
-                  <option value="{{.ID}}">{{.Name}}</option>
-                {{end}}
+            <div class="field">
+              <label class="field-label" for="title">Title <span class="optional">optional</span></label>
+              <input type="text" id="title" name="title" class="input" placeholder="Q4 roadmap">
+            </div>
+            {{if .Folders}}
+            <div class="field">
+              <label class="field-label" for="folder_id">Folder</label>
+              <select id="folder_id" name="folder_id" class="input">
+                <option value="">No folder</option>
+                {{range .Folders}}<option value="{{.ID}}" {{if eq $.CurrentFolder .ID}}selected{{end}}>{{.Name}}</option>{{end}}
               </select>
             </div>
+            {{end}}
+            <div class="field">
+              <label class="field-label" for="tags">Tags <span class="optional">comma-separated</span></label>
+              <input type="text" id="tags" name="tags" class="input" placeholder="launch, docs">
+            </div>
+          </fieldset>
+
+          <fieldset class="opt-group">
+            <legend class="opt-legend">Protection</legend>
+            <div class="field">
+              <label class="field-label" for="pin">PIN <span class="optional">optional</span></label>
+              <input type="password" id="pin" name="pin" class="input input-mono" placeholder="Leave empty for a public link" autocomplete="new-password">
+              <p class="hint">Whoever opens the link is asked for it. Attempts are budgeted per link, never per visitor.</p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="expires_in_hours">Expires after <span class="optional">hours</span></label>
+              <input type="number" id="expires_in_hours" name="expires_in_hours" class="input" placeholder="Never" min="1" inputmode="numeric">
+              <div class="quick" role="group" aria-label="Quick expiry">
+                <button type="button" class="quick-btn" data-hours="24">24 h</button>
+                <button type="button" class="quick-btn" data-hours="72">3 days</button>
+                <button type="button" class="quick-btn" data-hours="168">1 week</button>
+                <button type="button" class="quick-btn" data-hours="720">30 days</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="max_clicks">Click budget</label>
+              <input type="number" id="max_clicks" name="max_clicks" class="input" placeholder="Unlimited" min="1" inputmode="numeric">
+              <p class="hint">The link self-destructs once the budget is spent.</p>
+            </div>
+          </fieldset>
+
+          <fieldset class="opt-group">
+            <legend class="opt-legend">Routing</legend>
+            <div class="field">
+              <label class="field-label" for="ios_url">iOS destination</label>
+              <input type="url" id="ios_url" name="ios_url" class="input input-mono" placeholder="https://apps.apple.com/app/id…">
+            </div>
+            <div class="field">
+              <label class="field-label" for="android_url">Android destination</label>
+              <input type="url" id="android_url" name="android_url" class="input input-mono" placeholder="https://play.google.com/store/apps/details?id=…">
+              <p class="hint">Decided from the User-Agent in flight. It is never stored.</p>
+            </div>
+            <div class="field">
+              <span class="field-label">A/B split</span>
+              <div class="ab">
+                <input type="url" name="ab_url_a" class="input input-mono" placeholder="Variant A URL" aria-label="Variant A URL">
+                <input type="number" name="ab_weight_a" class="input ab-weight" placeholder="50" min="1" max="99" aria-label="Variant A weight, percent" inputmode="numeric">
+                <span class="ab-unit">%</span>
+                <input type="url" name="ab_url_b" class="input input-mono" placeholder="Variant B URL" aria-label="Variant B URL">
+                <span class="ab-rest hint">gets the rest</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="opt-group">
+            <legend class="opt-legend">Redirect</legend>
+            <div class="field">
+              <span class="field-label">Response code</span>
+              <div class="segmented" role="radiogroup" aria-label="Redirect code">
+                <label class="seg"><input type="radio" name="redirect_type" value="302" checked><span><strong>302</strong> Temporary</span></label>
+                <label class="seg"><input type="radio" name="redirect_type" value="301"><span><strong>301</strong> Permanent</span></label>
+              </div>
+              <p class="hint">Temporary is the safe default: browsers ask again every time, so an edited destination takes effect immediately. Permanent may be cached by browsers for good.</p>
+            </div>
+          </fieldset>
+        </div>
+      </details>
+    </form>
+  </section>
+
+  <section class="block list-block" aria-labelledby="list-title">
+    <div class="block-head">
+      <h2 class="block-title" id="list-title"><span class="num">02</span>{{if .CurrentFolder}}In this folder{{else if .CurrentTag}}Tagged links{{else}}The list{{end}}</h2>
+      <span class="block-count mono" id="link-count" data-total="{{len .Links}}">{{len .Links}} {{if eq (len .Links) 1}}link{{else}}links{{end}}</span>
+    </div>
+
+    <div class="listbar">
+      <nav class="chips only-mobile" aria-label="Folders">
+        <a href="/" class="chip" {{if and (not .CurrentFolder) (not .CurrentTag)}}aria-current="page"{{end}}>All<span class="chip-n">{{num .TotalLinks}}</span></a>
+        {{range .Folders}}<a href="/?folder={{.ID}}" class="chip" {{if eq $.CurrentFolder .ID}}aria-current="page"{{end}}><svg class="dot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="{{.Color}}"/></svg>{{.Name}}<span class="chip-n">{{index $.FolderCounts .ID}}</span></a>{{end}}
+        <button type="button" class="chip chip-add add-folder-btn"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Folder</button>
+      </nav>
+      <label class="search">
+        <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" id="link-search" placeholder="Search by slug, title, destination or tag" aria-label="Search links" autocomplete="off">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+    </div>
+
+    {{range .Folders}}{{if eq $.CurrentFolder .ID}}
+    <div class="folderbar">
+      <span class="folderbar-name"><svg class="dot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="{{.Color}}"/></svg>{{.Name}}</span>
+      <div class="folderbar-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="rename-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}" data-color="{{.Color}}"><svg class="i" aria-hidden="true"><use href="#i-edit"/></svg>Rename</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-ghost-danger" id="delete-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Delete folder</button>
+      </div>
+    </div>
+    {{end}}{{end}}
+
+    {{if .CurrentTag}}
+    <div class="folderbar">
+      <span class="folderbar-name">Filtered by <span class="tag">#{{.CurrentTag}}</span></span>
+      <div class="folderbar-actions"><a href="/" class="btn btn-ghost btn-sm"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg>Clear</a></div>
+    </div>
+    {{end}}
+
+    {{if .Links}}
+    <ol class="ledger" id="links">
+      {{range .Links}}
+      {{$s := state .}}
+      {{$host := .Domain}}{{if not $host}}{{$host = $.DefaultDomain}}{{end}}
+      <li class="row{{if ne $s "active"}} is-off{{end}}" data-search="{{.Slug}} {{.Title}} {{.TargetURL}} {{join " " .Tags}}">
+        <div class="row-main">
+          <div class="row-head">
+            <a class="slug" href="/{{.Slug}}" target="_blank" rel="noopener" title="Open the short link"><span class="slug-host">{{$host}}/</span><span class="slug-name">{{.Slug}}</span></a>
+            <button type="button" class="iconbtn iconbtn-sm copy-btn" data-copy="https://{{$host}}/{{.Slug}}" aria-label="Copy short link" title="Copy short link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            {{if eq $s "paused"}}<span class="label"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg>Paused</span>
+            {{else if eq $s "expired"}}<span class="label label-signal"><svg class="i" aria-hidden="true"><use href="#i-hourglass"/></svg>Expired</span>
+            {{else if eq $s "spent"}}<span class="label label-signal"><svg class="i" aria-hidden="true"><use href="#i-target"/></svg>Budget spent</span>{{end}}
+            {{if .HasPIN}}<span class="label label-warn"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>PIN</span>{{end}}
+            {{if eq .RedirectType 301}}<span class="label" title="Permanent redirect">301</span>{{end}}
+          </div>
+          {{if and .Title (ne .Title .Slug)}}<p class="row-title">{{.Title}}</p>{{end}}
+          <p class="row-dest" title="{{.TargetURL}}">
+            <svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+            <span class="dest-host">{{hostOf .TargetURL}}</span><span class="dest-rest">{{restOf .TargetURL}}</span>
+          </p>
+          <div class="row-meta">
+            {{if .IOSURL}}<span class="meta" title="{{.IOSURL}}"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg>iOS</span>{{end}}
+            {{if .AndroidURL}}<span class="meta" title="{{.AndroidURL}}"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg>Android</span>{{end}}
+            {{if .ABVariants}}<span class="meta"><svg class="i" aria-hidden="true"><use href="#i-split"/></svg>A/B {{range $i, $v := .ABVariants}}{{if $i}}/{{end}}{{$v.Weight}}{{end}}</span>{{end}}
+            {{if .ExpiresAt}}<span class="meta"><svg class="i" aria-hidden="true"><use href="#i-hourglass"/></svg>{{if eq $s "expired"}}Expired{{else}}Expires{{end}} <time datetime="{{iso .ExpiresAt}}" data-rel>{{date .ExpiresAt}}</time></span>{{end}}
+            {{range .Tags}}<a class="tag" href="/?tag={{.}}">#{{.}}</a>{{end}}
+          </div>
+        </div>
+
+        <div class="row-stats">
+          <div class="clicks">
+            <span class="clicks-n">{{num .ClickCount}}</span>
+            <span class="clicks-l">{{if .MaxClicks}}of {{num .MaxClicks}}{{else}}{{if eq .ClickCount 1}}click{{else}}clicks{{end}}{{end}}</span>
+          </div>
+          {{if .MaxClicks}}
+          <svg class="progress" viewBox="0 0 100 3" preserveAspectRatio="none" role="img" aria-label="{{pct .ClickCount .MaxClicks}}% of the click budget used"><rect class="progress-track" width="100" height="3"/><rect class="progress-bar" width="{{pct .ClickCount .MaxClicks}}" height="3"/></svg>
           {{end}}
-
-          <div class="form-group">
-            <label class="form-label">Tags (comma-separated)</label>
-            <input type="text" name="tags" class="form-input" placeholder="marketing, launch, docs">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">PIN (optional)</label>
-            <input type="password" name="pin" class="form-input mono" placeholder="Leave empty for public link">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Click budget (self-destructs after)</label>
-            <input type="number" name="max_clicks" class="form-input" placeholder="e.g. 50 (0 = unlimited)" min="1">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Expires after (hours)</label>
-            <input type="number" name="expires_in_hours" class="form-input" placeholder="e.g. 48 (0 = forever)" min="1">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Redirect code</label>
-            <select name="redirect_type" class="form-input">
-              <option value="302" selected>302 Found (Temporary - Recommended)</option>
-              <option value="301">301 Moved Permanently</option>
-            </select>
-          </div>
+          {{if .LastClickedAt}}<span class="row-last">last <time datetime="{{iso .LastClickedAt}}" data-rel>{{date .LastClickedAt}}</time></span>{{else}}<span class="row-last">no clicks yet</span>{{end}}
         </div>
 
-        <!-- Smart Conditional Routing Inputs -->
-        <hr class="lk-hr">
-        <h4 class="lk-h4 lk-h4-indigo">Routing by device</h4>
-        <div class="lk-grid lk-grid-wide">
-          <div class="form-group tight">
-            <label class="form-label">iOS target</label>
-            <input type="url" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id...">
-          </div>
-          <div class="form-group tight">
-            <label class="form-label">Android target</label>
-            <input type="url" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=...">
-          </div>
+        <div class="row-actions">
+          <button type="button" class="iconbtn qr-btn" data-id="{{.ID}}" data-title="{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}" data-url="https://{{$host}}/{{.Slug}}" data-qrforge="{{$.QRForgeURL}}" aria-label="QR code" title="QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
+          <a class="iconbtn" href="/preview/{{.Slug}}" target="_blank" rel="noopener" aria-label="Preview the destination" title="Preview"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg></a>
+          <button type="button" class="iconbtn edit-link-btn" data-id="{{.ID}}" aria-label="Edit link" title="Edit"><svg class="i" aria-hidden="true"><use href="#i-edit"/></svg></button>
+          <button type="button" class="iconbtn iconbtn-danger delete-link-btn" data-id="{{.ID}}" data-slug="{{.Slug}}" aria-label="Delete link" title="Delete"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg></button>
         </div>
+      </li>
+      {{end}}
+    </ol>
+    <div class="empty" id="search-empty" hidden>
+      <p class="empty-title">Nothing matches.</p>
+      <p class="empty-text">Try another word, or clear the search.</p>
+    </div>
+    {{else}}
+    <div class="empty">
+      <p class="empty-title">{{if .CurrentFolder}}This folder is empty.{{else if .CurrentTag}}No links carry this tag.{{else}}Nothing shortened yet.{{end}}</p>
+      <p class="empty-text">{{if or .CurrentFolder .CurrentTag}}Move a link here from its edit dialog, or <a href="/">see all links</a>.{{else}}Paste a URL above. The tracking parameters come off before it is stored.{{end}}</p>
+    </div>
+    {{end}}
+  </section>
+</div>
 
-        <h4 class="lk-h4 lk-h4-cyan">A/B split</h4>
-        <div class="lk-ab-row">
-          <input type="url" name="ab_url_a" class="form-input mono" placeholder="Variant A URL (e.g. Landing Page 1)">
-          <input type="number" name="ab_weight_a" class="form-input" placeholder="Weight % (e.g. 50)" min="1" max="99">
+{{/* The QR is drawn by this server at /api/links/<id>/qr.svg and encodes the
+     SHORT link, so it keeps working when the destination changes. */}}
+<dialog class="dlg" id="qr-dialog" aria-labelledby="qr-title">
+  <div class="dlg-head">
+    <h3 class="dlg-title" id="qr-title">QR code</h3>
+    <button type="button" class="iconbtn" data-close aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="dlg-body qr-body">
+    <img id="qr-image" class="qr" alt="" width="224" height="224">
+    <p class="qr-link mono" id="qr-link-text"></p>
+    <p class="hint">Encodes the short link, so a printed code keeps working if the destination changes later.</p>
+  </div>
+  <div class="dlg-foot">
+    <button type="button" class="btn btn-secondary copy-btn" id="qr-copy" data-copy=""><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>Copy link</button>
+    <a id="qr-png" href="#" download class="btn btn-secondary"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>PNG</a>
+    {{if .QRForgeURL}}<a id="qr-forge-direct" href="#" target="_blank" rel="noopener" class="btn btn-primary">Design in QR-Forge<svg class="i" aria-hidden="true"><use href="#i-external"/></svg></a>{{end}}
+  </div>
+</dialog>
+
+{{/* Everything about a link except its address. Moving a link between
+     folders is just another field here. */}}
+<dialog class="dlg dlg-wide" id="edit-modal" aria-labelledby="edit-title">
+  <form id="edit-form" novalidate>
+    <div class="dlg-head">
+      <div>
+        <h3 class="dlg-title" id="edit-title">Edit <span class="mono" id="edit-slug"></span></h3>
+        <p class="dlg-sub">The short address does not change.</p>
+      </div>
+      <button type="button" class="iconbtn" data-close aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <input type="hidden" name="id" id="edit-id">
+
+      <div class="field">
+        <label class="field-label" for="edit-url">Destination URL</label>
+        <input type="text" id="edit-url" name="target_url" class="input input-mono" required autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="field-label" for="edit-title-input">Title</label>
+          <input type="text" id="edit-title-input" name="title" class="input">
         </div>
-        <div class="lk-ab-row">
-          <input type="url" name="ab_url_b" class="form-input mono" placeholder="Variant B URL (e.g. Landing Page 2)">
-          <span class="lk-hint">Remaining % will route to Variant B</span>
+        <div class="field">
+          <label class="field-label" for="edit-folder">Folder</label>
+          <select id="edit-folder" name="folder_id" class="input">
+            <option value="">No folder</option>
+            {{range .Folders}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="edit-tags">Tags <span class="optional">comma-separated</span></label>
+          <input type="text" id="edit-tags" name="tags" class="input">
+        </div>
+        <div class="field">
+          <label class="field-label" for="edit-redirect">Redirect code</label>
+          <select id="edit-redirect" name="redirect_type" class="input">
+            <option value="302">302 Temporary</option>
+            <option value="301">301 Permanent</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="edit-pin">PIN</label>
+          <input type="password" id="edit-pin" name="pin" class="input input-mono" autocomplete="new-password" placeholder="No PIN">
+          <label class="check check-inline" id="edit-pin-remove-row" hidden><input type="checkbox" id="edit-pin-remove"><span>Remove the PIN</span></label>
+        </div>
+        <div class="field">
+          <label class="field-label" for="edit-expires">Expires</label>
+          <input type="datetime-local" id="edit-expires" name="expires" class="input">
+          <p class="hint">Empty means never.</p>
+        </div>
+        <div class="field">
+          <label class="field-label" for="edit-max-clicks">Click budget</label>
+          <input type="number" id="edit-max-clicks" name="max_clicks" class="input" min="0" placeholder="Unlimited" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">State</span>
+          <label class="check"><input type="checkbox" id="edit-active" checked><span>Active<small>Unticked, the link answers as expired.</small></span></label>
+        </div>
+      </div>
+
+      <details class="options options-inset">
+        <summary class="options-summary">
+          <svg class="i" aria-hidden="true"><use href="#i-phone"/></svg>
+          <span class="options-title">Routing by device</span>
+          <svg class="i options-caret" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+        </summary>
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label" for="edit-ios">iOS destination</label>
+            <input type="url" id="edit-ios" name="ios_url" class="input input-mono" placeholder="https://apps.apple.com/app/id…">
+          </div>
+          <div class="field">
+            <label class="field-label" for="edit-android">Android destination</label>
+            <input type="url" id="edit-android" name="android_url" class="input input-mono" placeholder="https://play.google.com/store/apps/details?id=…">
+          </div>
         </div>
       </details>
 
-      <button type="submit" class="btn btn-primary lk-submit">
-        Create clean link
-      </button>
-    </form>
-  </div>
-
-  <!-- Folder Tabs / Filter Bar -->
-  <div class="lk-tabs">
-    <a href="/" class="btn {{if not .CurrentFolder}}btn-primary{{else}}btn-secondary{{end}} btn-sm">
-      All Links
-    </a>
-    {{range .Folders}}
-      <a href="/?folder={{.ID}}" class="btn {{if eq $.CurrentFolder .ID}}btn-primary{{else}}btn-secondary{{end}} btn-sm lk-folder-tab">
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="{{.Color}}"/></svg>
-        {{.Name}}
-      </a>
-    {{end}}
-    <button id="add-folder-btn" class="btn btn-secondary btn-sm">+ New folder</button>
-    {{range .Folders}}{{if eq $.CurrentFolder .ID}}
-      <span class="lk-tabs-gap" aria-hidden="true"></span>
-      <button class="btn btn-ghost btn-sm" id="rename-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}">Rename</button>
-      <button class="btn btn-ghost btn-sm lk-danger-text" id="delete-folder-btn" data-id="{{.ID}}" data-name="{{.Name}}">Delete folder</button>
-    {{end}}{{end}}
-  </div>
-
-  <!-- Links Table -->
-  <div class="card">
-    <div class="lk-card-head">
-      <h2>Shortened links</h2>
-      <span class="lk-muted">{{len .Links}} links</span>
+      <p class="form-error" id="edit-error" role="alert" hidden></p>
     </div>
-
-    {{if .Links}}
-      <div class="table-responsive lk-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Slug & Title</th>
-              <th>Clean Destination & Smart Rules</th>
-              <th>Status</th>
-              <th>Clicks</th>
-              <th class="lk-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range .Links}}
-              <tr>
-                <td data-label="Link">
-                  <div class="lk-link-cell">
-                    <div class="lk-link-row">
-                      <a href="/{{.Slug}}" target="_blank" class="mono lk-link-slug">
-                        {{if .Domain}}{{.Domain}}/{{.Slug}}{{else}}/{{.Slug}}{{end}}
-                      </a>
-                      {{if .HasPIN}}
-                        <span class="status-pill status-locked lk-pin-mini">PIN</span>
-                      {{end}}
-                    </div>
-                    <span class="lk-muted-sm">{{.Title}}</span>
-                    
-                    {{if .Tags}}
-                      <div class="lk-tags">
-                        {{range .Tags}}
-                          <span class="lk-tag">#{{.}}</span>
-                        {{end}}
-                      </div>
-                    {{end}}
-                  </div>
-                </td>
-                <td data-label="Destination" class="lk-dest">
-                  <div class="mono lk-dest-url" title="{{.TargetURL}}">
-                    {{.TargetURL}}
-                  </div>
-                  {{if .IOSURL}}
-                    <div class="lk-rule lk-rule-ios">
-                      iOS target set
-                    </div>
-                  {{end}}
-                  {{if .AndroidURL}}
-                    <div class="lk-rule lk-rule-android">
-                      Android target set
-                    </div>
-                  {{end}}
-                  {{if .ABVariants}}
-                    <div class="lk-rule lk-rule-ab">
-                      A/B split active ({{len .ABVariants}} variants)
-                    </div>
-                  {{end}}
-                </td>
-                <td data-label="Status">
-                  {{if .IsExpired}}
-                    <span class="status-pill status-expired">Expired</span>
-                  {{else if .HasPIN}}
-                    <span class="status-pill status-locked">PIN Protected</span>
-                  {{else}}
-                    <span class="status-pill status-active">Active</span>
-                  {{end}}
-                </td>
-                <td data-label="Clicks">
-                  <span class="mono lk-clicks">
-                    {{.ClickCount}}
-                    {{if .MaxClicks}}<span class="lk-clicks-max">/{{.MaxClicks}}</span>{{end}}
-                  </span>
-                </td>
-                <td class="lk-actions">
-                  <div class="lk-actions-row">
-                    <button 
-                      class="btn btn-secondary btn-sm copy-btn" 
-                      data-copy="{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
-                      title="Copy Link to Clipboard"
-                    >
-                      Copy
-                    </button>
-                    <a 
-                      href="/preview/{{.Slug}}" 
-                      class="btn btn-secondary btn-sm" 
-                      target="_blank" 
-                      title="Inspect Clean URL Preview"
-                    >
-                      Preview
-                    </a>
-                    <button 
-                      class="btn btn-secondary btn-sm qr-btn" 
-                      data-id="{{.ID}}"
-                      data-title="{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}"
-                      data-url="https://{{if .Domain}}{{.Domain}}{{else}}{{$.DefaultDomain}}{{end}}/{{.Slug}}" 
-                      data-qrforge="{{$.QRForgeURL}}"
-                      title="Generate QR via QR-Forge"
-                    >
-                      QR
-                    </button>
-                    <button
-                      class="btn btn-secondary btn-sm edit-link-btn"
-                      data-id="{{.ID}}"
-                      title="Edit link"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      class="btn btn-danger btn-sm delete-link-btn" 
-                      data-id="{{.ID}}" 
-                      data-slug="{{.Slug}}" 
-                      title="Delete Link"
-                      aria-label="Delete link"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-    {{else}}
-      <div class="lk-empty">
-        <p class="lk-empty-title">No shortened links yet</p>
-        <p class="lk-sm">Paste any URL above to generate your first clean, privacy-respecting short link.</p>
-      </div>
-    {{end}}
-  </div>
-</div>
-</div>
-
-<!-- QR Forge Modal -->
-<div id="qr-modal" class="modal-overlay">
-  <div class="modal-box lk-center">
-    <h3 class="lk-h2 mb-05">QR code</h3>
-    <img id="qr-image" class="lk-qr" alt="">
-    <p class="mono lk-modal-link" id="qr-link-text"></p>
-
-    <div class="lk-modal-actions">
-      <a id="qr-png" href="#" download class="btn btn-secondary btn-sm">Download PNG</a>
-      {{if .QRForgeURL}}
-      <a id="qr-forge-direct" href="#" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
-        Design in QR-Forge ↗
-      </a>
-      {{end}}
-      <button id="qr-modal-close" class="btn btn-secondary btn-sm">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit link -->
-<div id="edit-modal" class="modal-overlay">
-  <form id="edit-form" class="modal-box lk-modal-wide" novalidate>
-    <div class="lk-card-head">
-      <h3 class="lk-h2">Edit <span class="mono lk-accent" id="edit-slug"></span></h3>
-      <span class="lk-muted">The short address does not change.</span>
-    </div>
-    <input type="hidden" name="id" id="edit-id">
-
-    <div class="form-group">
-      <label for="edit-url" class="form-label">Destination URL</label>
-      <input type="text" id="edit-url" name="target_url" class="form-input mono" required autocomplete="off">
-    </div>
-
-    <div class="lk-grid lk-grid-top">
-      <div class="form-group tight">
-        <label for="edit-title" class="form-label">Title</label>
-        <input type="text" id="edit-title" name="title" class="form-input">
-      </div>
-      <div class="form-group tight">
-        <label for="edit-folder" class="form-label">Folder</label>
-        <select id="edit-folder" name="folder_id" class="form-input">
-          <option value="">No folder</option>
-          {{range .Folders}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
-        </select>
-      </div>
-      <div class="form-group tight">
-        <label for="edit-tags" class="form-label">Tags (comma-separated)</label>
-        <input type="text" id="edit-tags" name="tags" class="form-input">
-      </div>
-      <div class="form-group tight">
-        <label for="edit-redirect" class="form-label">Redirect code</label>
-        <select id="edit-redirect" name="redirect_type" class="form-input">
-          <option value="302">302 Found (temporary)</option>
-          <option value="301">301 Moved permanently</option>
-        </select>
-      </div>
-      <div class="form-group tight">
-        <label for="edit-pin" class="form-label">PIN</label>
-        <input type="password" id="edit-pin" name="pin" class="form-input mono" autocomplete="new-password" placeholder="No PIN">
-        <label class="lk-check-row" id="edit-pin-remove-row" hidden><input type="checkbox" id="edit-pin-remove"> <span>Remove the PIN</span></label>
-      </div>
-      <div class="form-group tight">
-        <label for="edit-expires" class="form-label">Expires</label>
-        <input type="datetime-local" id="edit-expires" name="expires" class="form-input">
-        <span class="lk-muted-sm">Empty means never.</span>
-      </div>
-      <div class="form-group tight">
-        <label for="edit-max-clicks" class="form-label">Click budget</label>
-        <input type="number" id="edit-max-clicks" name="max_clicks" class="form-input" min="0" placeholder="0 = unlimited">
-      </div>
-      <div class="form-group tight">
-        <label class="form-label">State</label>
-        <label class="lk-check-row"><input type="checkbox" id="edit-active" checked> <span>Active. Unticked, the link answers as expired.</span></label>
-      </div>
-    </div>
-
-    <details class="lk-options">
-      <summary>Routing by device</summary>
-      <div class="lk-grid">
-        <div class="form-group tight">
-          <label for="edit-ios" class="form-label">iOS target</label>
-          <input type="url" id="edit-ios" name="ios_url" class="form-input mono" placeholder="https://apps.apple.com/app/id…">
-        </div>
-        <div class="form-group tight">
-          <label for="edit-android" class="form-label">Android target</label>
-          <input type="url" id="edit-android" name="android_url" class="form-input mono" placeholder="https://play.google.com/store/apps/details?id=…">
-        </div>
-      </div>
-    </details>
-
-    <p class="flash flash-err" id="edit-error" hidden></p>
-
-    <div class="lk-modal-actions lk-modal-actions-end">
-      <button type="button" id="edit-cancel" class="btn btn-secondary">Cancel</button>
+    <div class="dlg-foot">
+      <button type="button" class="btn btn-ghost" id="edit-cancel">Cancel</button>
       <button type="submit" class="btn btn-primary" id="edit-save">Save changes</button>
     </div>
   </form>
-</div>
+</dialog>
+
+{{/* One dialog for a new folder and for renaming one. */}}
+<dialog class="dlg dlg-sm" id="folder-dialog" aria-labelledby="folder-title">
+  <form id="folder-form" novalidate>
+    <div class="dlg-head">
+      <h3 class="dlg-title" id="folder-title">New folder</h3>
+      <button type="button" class="iconbtn" data-close aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="field">
+        <label class="field-label" for="folder-name">Name</label>
+        <input type="text" id="folder-name" class="input" required maxlength="60" placeholder="Launch" autocomplete="off">
+      </div>
+      <fieldset class="field">
+        <legend class="field-label">Colour</legend>
+        <div class="swatches">
+          <label class="swatch" title="Vermilion"><input type="radio" name="color" value="#e0442a" checked><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#e0442a"/></svg><span class="sr-only">Vermilion</span></label>
+          <label class="swatch" title="Ochre"><input type="radio" name="color" value="#d08a12"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#d08a12"/></svg><span class="sr-only">Ochre</span></label>
+          <label class="swatch" title="Moss"><input type="radio" name="color" value="#5b8a3a"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#5b8a3a"/></svg><span class="sr-only">Moss</span></label>
+          <label class="swatch" title="Teal"><input type="radio" name="color" value="#1f7a7a"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#1f7a7a"/></svg><span class="sr-only">Teal</span></label>
+          <label class="swatch" title="Cobalt"><input type="radio" name="color" value="#2f5ec4"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#2f5ec4"/></svg><span class="sr-only">Cobalt</span></label>
+          <label class="swatch" title="Plum"><input type="radio" name="color" value="#7d3f98"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#7d3f98"/></svg><span class="sr-only">Plum</span></label>
+          <label class="swatch" title="Rose"><input type="radio" name="color" value="#c43d6c"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#c43d6c"/></svg><span class="sr-only">Rose</span></label>
+          <label class="swatch" title="Graphite"><input type="radio" name="color" value="#5c574f"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#5c574f"/></svg><span class="sr-only">Graphite</span></label>
+        </div>
+      </fieldset>
+      <p class="form-error" id="folder-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button type="submit" class="btn btn-primary" id="folder-save">Create folder</button>
+    </div>
+  </form>
+</dialog>
 {{end}}

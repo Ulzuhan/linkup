@@ -9,8 +9,15 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
+	"unicode"
+
+	"github.com/Ulzuhan/linkup/internal/models"
 )
 
 //go:embed static/* templates/*
@@ -19,7 +26,7 @@ var EmbeddedFS embed.FS
 type Renderer struct {
 	templates map[string]*template.Template
 	// comunes se mezcla en cada render. Sin esto, un dato que aparece en el
-	// layout —y por tanto en las cinco páginas— habría que pasarlo en las cinco
+	// layout —y por tanto en las seis páginas— habría que pasarlo en las seis
 	// llamadas, y bastaría olvidarse en una para que la plantilla lo pintara
 	// vacío sin avisar.
 	comunes map[string]interface{}
@@ -36,7 +43,9 @@ func NewRenderer() (*Renderer, error) {
 
 	pages := []string{"landing.html", "dashboard.html", "preview.html", "pin.html", "error.html", "settings.html"}
 	for _, page := range pages {
-		tmpl, err := template.ParseFS(EmbeddedFS, "templates/layout.html", "templates/"+page)
+		// The template is named after the layout so that Execute renders the
+		// layout, which is what pulls the page's "content" block in.
+		tmpl, err := template.New("layout.html").Funcs(funcs()).ParseFS(EmbeddedFS, "templates/layout.html", "templates/"+page)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse template %s: %w", page, err)
 		}
@@ -66,13 +75,167 @@ func (r *Renderer) Render(w io.Writer, name string, data interface{}) error {
 	return tmpl.Execute(w, data)
 }
 
+// funcs is what the templates can call beyond the language itself. Kept
+// deliberately small: formatting, a few readings of a link, and the pointer
+// dereference the models force on us. Anything that decides something
+// belongs in a handler or a service, not here.
+func funcs() template.FuncMap {
+	return template.FuncMap{
+		"date":     fmtDate,
+		"datetime": fmtDateTime,
+		"iso":      fmtISO,
+		"num":      fmtNum,
+		"val":      asInt64,
+		"pct":      percent,
+		"hostOf":   hostOf,
+		"restOf":   restOf,
+		"state":    linkState,
+		"initial":  initial,
+		"join":     func(sep string, xs []string) string { return strings.Join(xs, sep) },
+	}
+}
+
+// asInt64 reads an int, an int64 or a pointer to either; nil is zero. The
+// models keep optional timestamps and budgets as pointers, and a template can
+// print a pointer but cannot compare one.
+func asInt64(v interface{}) int64 {
+	switch n := v.(type) {
+	case int:
+		return int64(n)
+	case int64:
+		return n
+	case *int:
+		if n != nil {
+			return int64(*n)
+		}
+	case *int64:
+		if n != nil {
+			return *n
+		}
+	}
+	return 0
+}
+
+func fmtDate(v interface{}) string {
+	n := asInt64(v)
+	if n <= 0 {
+		return ""
+	}
+	return time.Unix(n, 0).Format("2 Jan 2006")
+}
+
+func fmtDateTime(v interface{}) string {
+	n := asInt64(v)
+	if n <= 0 {
+		return ""
+	}
+	return time.Unix(n, 0).Format("2 Jan 2006, 15:04")
+}
+
+// fmtISO is for <time datetime="…">, which the script turns into "in 3 days".
+func fmtISO(v interface{}) string {
+	n := asInt64(v)
+	if n <= 0 {
+		return ""
+	}
+	return time.Unix(n, 0).Format(time.RFC3339)
+}
+
+// fmtNum groups thousands: 12480 → 12,480.
+func fmtNum(v interface{}) string {
+	n := asInt64(v)
+	s := strconv.FormatInt(n, 10)
+	neg := strings.HasPrefix(s, "-")
+	if neg {
+		s = s[1:]
+	}
+	var b strings.Builder
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	if neg {
+		return "-" + b.String()
+	}
+	return b.String()
+}
+
+// percent of a over b, clamped to 0–100. Zero when there is no budget.
+func percent(a, b interface{}) int {
+	x, y := asInt64(a), asInt64(b)
+	if y <= 0 {
+		return 0
+	}
+	p := int(x * 100 / y)
+	if p < 0 {
+		return 0
+	}
+	if p > 100 {
+		return 100
+	}
+	return p
+}
+
+// hostOf and restOf split a destination for display: the host in one weight,
+// the path and query in another. A URL that does not parse is shown whole.
+func hostOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return raw
+	}
+	return u.Host
+}
+
+func restOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	rest := u.RequestURI()
+	if u.Fragment != "" {
+		rest += "#" + u.Fragment
+	}
+	if rest == "/" {
+		return ""
+	}
+	return rest
+}
+
+// linkState names what a link is doing right now: "active", "paused" (its
+// owner switched it off), "expired" (its date passed) or "spent" (its click
+// budget is used up). The pill in the list reads this; the redirect itself
+// only asks IsExpired, which is true for the last three.
+func linkState(l models.Link) string {
+	if !l.IsActive {
+		return "paused"
+	}
+	if l.ExpiresAt != nil && *l.ExpiresAt > 0 && time.Now().Unix() >= *l.ExpiresAt {
+		return "expired"
+	}
+	if l.MaxClicks != nil && *l.MaxClicks > 0 && l.ClickCount >= *l.MaxClicks {
+		return "spent"
+	}
+	return "active"
+}
+
+// initial is the letter in the avatar: the first character of the name,
+// upper-cased, or a question mark for a name that has none.
+func initial(s string) string {
+	for _, r := range strings.TrimSpace(s) {
+		return string(unicode.ToUpper(r))
+	}
+	return "?"
+}
+
 var (
 	assetVersionOnce sync.Once
 	assetVersion     string
 )
 
 // AssetVersion is a short digest of everything under static/, computed once
-// per process. It goes into the URLs of the stylesheets and the script so
+// per process. It goes into the URLs of the stylesheet and the scripts so
 // that a new build is a new URL.
 //
 // Without it, a deploy changed the file behind /static/css/app.css and left

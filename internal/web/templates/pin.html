@@ -1,23 +1,23 @@
 {{define "content"}}
-<div class="kc-workspace lk-public">
-  <div class="container lk-narrow-xs">
-    <div class="card lk-public-card">
-      <h1>This link needs a PIN</h1>
-      <p class="lk-public-sub">Whoever shared it with you has the PIN. Attempts are limited per link, not per visitor.</p>
+<div class="public">
+  <div class="slip">
+    <p class="kicker">Protected link</p>
+    <h1 class="slip-title">This link needs a PIN</h1>
+    <p class="slip-sub">Whoever shared it with you has it. The destination is shown only after the PIN, and attempts are limited per link, never per visitor.</p>
 
-      {{if .Error}}
-        <div class="flash flash-err">⚠ {{.Error}}</div>
-      {{end}}
-
-      <form method="POST" action="/pin/{{.Slug}}">
-        <div class="form-group">
-          <label for="pin-input" class="form-label">PIN</label>
-          <input type="password" id="pin-input" name="pin" class="form-input mono lk-pin-input" placeholder="••••" required autofocus autocomplete="one-time-code" inputmode="numeric">
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg lk-block mb-1">Unlock</button>
-        <a href="/preview/{{.Slug}}" class="btn btn-secondary lk-block">See where it goes first</a>
-      </form>
+    {{if .Error}}
+    <div class="notice notice-err" role="alert">
+      <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+      <p>{{.Error}}</p>
     </div>
+    {{end}}
+
+    <form method="POST" action="/pin/{{.Slug}}" class="pin-form">
+      <label class="sr-only" for="pin-input">PIN</label>
+      <input type="password" id="pin-input" name="pin" class="input input-mono pin-input" placeholder="••••" required autofocus autocomplete="one-time-code" inputmode="numeric" spellcheck="false">
+      <button type="submit" class="btn btn-primary btn-lg btn-block">Unlock<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+    </form>
+    <p class="hint">Short link: <span class="mono">/{{.Slug}}</span></p>
   </div>
 </div>
 {{end}}

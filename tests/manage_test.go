@@ -140,7 +140,7 @@ func TestDashboardShowsManagementControls(t *testing.T) {
 	mustCreateLink(t, h, `{"url":"https://example.com/x","folder_id":"`+f+`"}`)
 
 	all := get(t, h, "/").Body.String()
-	if !strings.Contains(all, `class="btn btn-secondary btn-sm edit-link-btn"`) || !strings.Contains(all, `id="edit-modal"`) {
+	if !strings.Contains(all, `class="iconbtn edit-link-btn"`) || !strings.Contains(all, `id="edit-modal"`) {
 		t.Errorf("no edit control on the dashboard")
 	}
 	if strings.Contains(all, `id="delete-folder-btn"`) {

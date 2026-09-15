@@ -5,6 +5,54 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **A new look, and a new frame around it.** The dashboard, the front page
+  and the public pages are rebuilt from scratch in paper and ink: a warm
+  sheet, near-black type, hairline rules and one colour of signal, a
+  vermilion kept for what gets cut and what gets deleted. Headlines are set
+  in a serif (Instrument Serif), the interface in a grotesk (Geist), every
+  URL in a typewriter mono (IBM Plex Mono); all three ship inside the binary
+  under the SIL Open Font License (see `static/fonts/OFL.txt`). Paper is the
+  default and an ink variant sits behind a switch, resolved before the first
+  paint; `?theme=light` or `?theme=dark` on any address forces one look for
+  that page load without remembering it.
+- The signed-in pages are an app shell now: a sidebar with the way around
+  and the folders (with counts), and the page beside it. On a phone the
+  sidebar folds into a top bar and the folders become chips. The front page
+  and the public pages keep a masthead and a colophon instead.
+- The composer is one field on one rule and one button; the rest waits
+  behind "Options", grouped by what it is for. The strip preview shows the
+  pasted URL with the tracking parameters struck through next to what will
+  be stored. Links are rows of a ledger, not table cells: the short address,
+  the title in italics, the destination, the rules, the clicks as a serif
+  numeral with the budget as a bar, and the actions in one place. A search
+  box filters as you type (`/` focuses it) and tags are clickable filters.
+- Folders get a dialog with a name and a colour instead of `prompt()`; every
+  destructive action asks in a dialog instead of `confirm()`. Settings has
+  its sections in the sidebar, dates instead of raw timestamps, and a
+  drag-and-drop CSV import that reports what happened. The front page
+  carries an interactive demo of the cleaner that runs in the browser and
+  sends nothing anywhere.
+- The overview says something: links answering right now, total clicks with
+  when the last one happened, tracking parameters stripped across the whole
+  collection, and how many links carry a PIN, an expiry or a click budget.
+- The webhook form offers the events the server actually emits
+  (`link.created`, `link.self_destructed`, `link.deleted`). It used to offer
+  `link.expired_ttl`, which nothing dispatches.
+- The public preview no longer links to QR-Forge when no QR-Forge is
+  configured, and the PIN page no longer offers a "see where it goes first"
+  link that led straight back to the PIN page.
+
+### Removed
+
+- The KaiCorp house theme (`kaicorp.css`, `landing-polish.css`, the mark and
+  the Inter, Space Grotesk and JetBrains Mono files). LinkUp has its own
+  identity now; the colophon still credits KaiCorp Labs and, when
+  `KAICORP_FOOTER_LINKS` is set, links to the other tools. A future
+  `sync-theme.sh` run would copy the two stylesheets back; nothing
+  references them.
+
 ## [0.6.1] - 2026-09-15
 
 ### Fixed

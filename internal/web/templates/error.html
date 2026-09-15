@@ -1,12 +1,13 @@
 {{define "content"}}
-<div class="kc-workspace lk-public">
-  <div class="container lk-narrow-xs">
-    <div class="card lk-public-card">
-      <h1>{{.Heading}}</h1>
-      <p class="lk-public-sub">{{.Message}}</p>
-      <div class="lk-public-actions">
-        <a href="/" class="btn btn-primary">Back to LinkUp</a>
-      </div>
+<div class="public">
+  <div class="slip">
+    {{/* The handler's own heading, as a stamp: "410 - Link Expired". The
+         serif title below says the same thing in plainer words. */}}
+    {{if .Heading}}<p class="slip-code">{{.Heading}}</p>{{else if .StatusCode}}<p class="slip-code">{{.StatusCode}}</p>{{end}}
+    <h1 class="slip-title">{{if eq .StatusCode 404}}This link does not exist.{{else if eq .StatusCode 410}}This link has ended.{{else}}{{.Heading}}{{end}}</h1>
+    <p class="slip-sub">{{.Message}}</p>
+    <div class="slip-actions">
+      <a href="/" class="btn btn-primary btn-lg">Back to LinkUp</a>
     </div>
   </div>
 </div>

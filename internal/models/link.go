@@ -158,6 +158,15 @@ type DashboardData struct {
 	CurrentTag    string
 	TotalLinks    int
 	TotalClicks   int
+	// Derived for the tiles: links that still answer, links with a PIN, an
+	// expiry or a click budget, tracking parameters stripped across the
+	// collection, and when anything was last clicked (zero when never).
+	ActiveLinks    int
+	ProtectedLinks int
+	TotalStripped  int
+	LastClickAt    int64
+	// Links per folder, by folder id, over the whole collection.
+	FolderCounts  map[string]int
 	PublicHost    string
 	DefaultDomain string
 	QRForgeURL    string

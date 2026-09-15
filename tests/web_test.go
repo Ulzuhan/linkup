@@ -81,11 +81,11 @@ func TestThemeAssetsAreServed(t *testing.T) {
 	h, done := setupPublicServer(t)
 	defer done()
 	for path, wantType := range map[string]string{
-		"/static/css/app.css":            "text/css",
-		"/static/css/kaicorp.css":        "text/css",
-		"/static/css/landing-polish.css": "text/css",
-		"/static/js/app.js":              "javascript",
-		"/static/kaicorp-mark.png":       "image/png",
+		"/static/css/app.css":                 "text/css",
+		"/static/js/app.js":                   "javascript",
+		"/static/js/theme.js":                 "javascript",
+		"/static/favicon.svg":                 "image/svg",
+		"/static/fonts/instrumentserif.woff2": "font",
 	} {
 		rr := get(t, h, path)
 		if rr.Code != http.StatusOK {
@@ -107,7 +107,7 @@ func TestAssetsAreVersionedAndCacheable(t *testing.T) {
 		t.Fatalf("asset version %q, want 12 hex characters", v)
 	}
 	body := get(t, h, "/").Body.String()
-	for _, want := range []string{"/static/css/app.css?v=" + v, "/static/js/app.js?v=" + v} {
+	for _, want := range []string{"/static/css/app.css?v=" + v, "/static/js/app.js?v=" + v, "/static/js/theme.js?v=" + v} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page does not reference %q", want)
 		}
@@ -130,10 +130,10 @@ func TestAnonymousHomeIsAFrontPage(t *testing.T) {
 	}
 	body := rr.Body.String()
 	for _, want := range []string{
-		`class="kc-product-landing`,
+		`class="landing"`,
 		`href="/auth/login"`,
 		`https://idp.example.test/enroll/`,
-		`kc-card-grid`,
+		`class="feature-grid"`,
 		`Built by <strong>KaiCorp Labs</strong>`,
 		`aria-current="page">LinkUp`,
 	} {
@@ -141,7 +141,7 @@ func TestAnonymousHomeIsAFrontPage(t *testing.T) {
 			t.Errorf("front page lacks %q", want)
 		}
 	}
-	for _, unwanted := range []string{`id="create-link-form"`, `kc-account`} {
+	for _, unwanted := range []string{`id="create-link-form"`, `class="account"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("front page shows %q, which belongs to a signed-in session", unwanted)
 		}
@@ -164,12 +164,12 @@ func TestSignedInHomeIsTheDashboard(t *testing.T) {
 		t.Fatalf("status %d, want 200", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{`id="create-link-form"`, `class="kc-account"`, `href="/settings"`, `kc-workspace`} {
+	for _, want := range []string{`id="create-link-form"`, `class="account"`, `href="/settings"`, `class="workspace`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard lacks %q", want)
 		}
 	}
-	if strings.Contains(body, `class="kc-product-landing`) {
+	if strings.Contains(body, `class="landing"`) {
 		t.Errorf("dashboard shows the front page")
 	}
 }

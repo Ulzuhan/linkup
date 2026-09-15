@@ -5,6 +5,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-15
+
 ### Changed
 
 - **A new look, and a new frame around it.** The dashboard, the front page

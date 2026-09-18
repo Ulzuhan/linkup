@@ -48,6 +48,12 @@ versioning follows [Semantic Versioning](https://semver.org/).
   synced from the kaicorplabs repository. The house look is now in LinkUp's
   own stylesheet, ported from DocDrop; a future `sync-theme.sh` run would
   copy the two files back and nothing would reference them.
+### Fixed
+
+- The runtime image upgrades its Alpine packages at build time. The base is
+  pinned by digest, so a fix published after that digest was cut (this
+  week: OpenSSL, CVE-2026-45447) was missing from the image and the scan
+  that gates every build failed.
 
 ## [0.7.1] - 2026-09-15
 

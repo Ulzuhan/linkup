@@ -29,6 +29,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ==============================================================================
 FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
 
+# The base image is pinned by digest for reproducibility, so a security fix
+# published after that digest was cut is not in it. Upgrading the packages
+# here picks the fix up at build time; the scan that follows every build is
+# what catches a base that has fallen behind.
+RUN apk --no-cache upgrade
+
 # Create non-root system user and group (UID 10001)
 RUN addgroup -g 10001 -S linkup && \
     adduser -u 10001 -S linkup -G linkup && \

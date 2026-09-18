@@ -81,11 +81,12 @@ func TestThemeAssetsAreServed(t *testing.T) {
 	h, done := setupPublicServer(t)
 	defer done()
 	for path, wantType := range map[string]string{
-		"/static/css/app.css":                 "text/css",
-		"/static/js/app.js":                   "javascript",
-		"/static/js/theme.js":                 "javascript",
-		"/static/favicon.svg":                 "image/svg",
-		"/static/fonts/instrumentserif.woff2": "font",
+		"/static/css/app.css":       "text/css",
+		"/static/js/app.js":         "javascript",
+		"/static/js/theme.js":       "javascript",
+		"/static/favicon.svg":       "image/svg",
+		"/static/kaicorp-mark.png":  "image/png",
+		"/static/fonts/inter.woff2": "font",
 	} {
 		rr := get(t, h, path)
 		if rr.Code != http.StatusOK {
@@ -133,7 +134,7 @@ func TestAnonymousHomeIsAFrontPage(t *testing.T) {
 		`class="landing"`,
 		`href="/auth/login"`,
 		`https://idp.example.test/enroll/`,
-		`class="feature-grid"`,
+		`class="features"`,
 		`Built by <strong>KaiCorp Labs</strong>`,
 		`aria-current="page">LinkUp`,
 	} {
@@ -141,7 +142,7 @@ func TestAnonymousHomeIsAFrontPage(t *testing.T) {
 			t.Errorf("front page lacks %q", want)
 		}
 	}
-	for _, unwanted := range []string{`id="create-link-form"`, `class="account"`} {
+	for _, unwanted := range []string{`id="create-link-form"`, `class="menu-root"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("front page shows %q, which belongs to a signed-in session", unwanted)
 		}
@@ -164,7 +165,7 @@ func TestSignedInHomeIsTheDashboard(t *testing.T) {
 		t.Fatalf("status %d, want 200", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{`id="create-link-form"`, `class="account"`, `href="/settings"`, `class="workspace`} {
+	for _, want := range []string{`id="create-link-form"`, `class="menu-root"`, `href="/settings"`, `workspace"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard lacks %q", want)
 		}

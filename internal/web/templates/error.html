@@ -1,14 +1,13 @@
 {{define "content"}}
-<div class="public">
-  <div class="slip">
-    {{/* The handler's own heading, as a stamp: "410 - Link Expired". The
-         serif title below says the same thing in plainer words. */}}
-    {{if .Heading}}<p class="slip-code">{{.Heading}}</p>{{else if .StatusCode}}<p class="slip-code">{{.StatusCode}}</p>{{end}}
-    <h1 class="slip-title">{{if eq .StatusCode 404}}This link does not exist.{{else if eq .StatusCode 410}}This link has ended.{{else}}{{.Heading}}{{end}}</h1>
-    <p class="slip-sub">{{.Message}}</p>
-    <div class="slip-actions">
-      <a href="/" class="btn btn-primary btn-lg">Back to LinkUp</a>
-    </div>
+<div class="container-sm dl">
+  <div class="card state rise">
+    <span class="fi fi-lg" data-kind="off" aria-hidden="true"><svg><use href="#i-link-off"/></svg></span>
+    {{/* The handler's own heading, as a badge: "410 - Link Expired". The
+         title below says the same thing in plainer words. */}}
+    {{if .Heading}}<span class="badge mono" data-tone="{{if eq .StatusCode 410}}accent{{else}}danger{{end}}">{{.Heading}}</span>{{end}}
+    <h1>{{if eq .StatusCode 404}}This link does not exist{{else if eq .StatusCode 410}}This link has ended{{else}}{{.Heading}}{{end}}</h1>
+    <p>{{.Message}}</p>
+    <a href="/" class="btn btn-primary">Back to LinkUp</a>
   </div>
 </div>
 {{end}}

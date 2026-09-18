@@ -4,8 +4,8 @@
     <span class="fi fi-lg" data-kind="{{if .HasPIN}}pin{{else}}link{{end}}" aria-hidden="true"><svg><use href="#{{if .HasPIN}}i-lock{{else}}i-link{{end}}"/></svg></span>
     <h1>Where this link goes</h1>
     <div class="sub">
-      <span class="badge" data-tone="ice"><svg aria-hidden="true"><use href="#i-eye-off"/></svg>No visitor tracking</span>
-      {{if .HasPIN}}<span class="badge" data-tone="ice"><svg aria-hidden="true"><use href="#i-lock"/></svg>PIN protected</span>{{end}}
+      <span class="badge" data-tone="accent"><svg aria-hidden="true"><use href="#i-eye-off"/></svg>No visitor tracking</span>
+      {{if .HasPIN}}<span class="badge" data-tone="accent"><svg aria-hidden="true"><use href="#i-lock"/></svg>PIN protected</span>{{end}}
       {{if .StrippedParams}}<span class="badge" data-tone="accent"><svg aria-hidden="true"><use href="#i-scissors"/></svg>{{len .StrippedParams}} tracking {{if eq (len .StrippedParams) 1}}parameter{{else}}parameters{{end}} cut</span>{{end}}
     </div>
     <p class="dl-lede">The destination, with the tracking parameters already removed. Nothing about you was read to show it.</p>

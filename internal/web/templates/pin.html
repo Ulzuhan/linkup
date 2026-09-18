@@ -1,23 +1,22 @@
 {{define "content"}}
-<div class="public">
-  <div class="slip">
-    <p class="kicker">Protected link</p>
-    <h1 class="slip-title">This link needs a PIN</h1>
-    <p class="slip-sub">Whoever shared it with you has it. The destination is shown only after the PIN, and attempts are limited per link, never per visitor.</p>
-
-    {{if .Error}}
-    <div class="notice notice-err" role="alert">
-      <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
-      <p>{{.Error}}</p>
-    </div>
-    {{end}}
-
-    <form method="POST" action="/pin/{{.Slug}}" class="pin-form">
-      <label class="sr-only" for="pin-input">PIN</label>
-      <input type="password" id="pin-input" name="pin" class="input input-mono pin-input" placeholder="••••" required autofocus autocomplete="one-time-code" inputmode="numeric" spellcheck="false">
-      <button type="submit" class="btn btn-primary btn-lg btn-block">Unlock<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
-    </form>
-    <p class="hint">Short link: <span class="mono">/{{.Slug}}</span></p>
+<div class="container-sm dl">
+  <div class="dl-hero rise">
+    <span class="fi fi-lg" data-kind="pin" aria-hidden="true"><svg><use href="#i-lock"/></svg></span>
+    <h1>This link needs a PIN</h1>
+    <p class="dl-lede">Whoever shared it with you has it. The destination is shown only after the PIN, and attempts are limited per link, never per visitor.</p>
   </div>
+
+  {{if .Error}}
+  <div class="note" data-tone="danger" role="alert">
+    <p class="note-title"><svg aria-hidden="true"><use href="#i-alert"/></svg>{{.Error}}</p>
+  </div>
+  {{end}}
+
+  <form method="POST" action="/pin/{{.Slug}}" class="card card-pad pin-form">
+    <label class="label" for="pin-input">PIN</label>
+    <input type="password" id="pin-input" name="pin" class="input mono pin-input" placeholder="••••" required autofocus autocomplete="one-time-code" inputmode="numeric" spellcheck="false">
+    <button type="submit" class="btn btn-primary btn-lg btn-block"><svg aria-hidden="true"><use href="#i-lock"/></svg>Unlock</button>
+    <p class="dl-fine">Short link: <span class="mono">/{{.Slug}}</span></p>
+  </form>
 </div>
 {{end}}

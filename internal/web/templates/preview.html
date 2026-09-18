@@ -1,48 +1,51 @@
 {{define "content"}}
-<div class="public">
-  <div class="slip">
-    <p class="kicker">Destination preview</p>
-    <h1 class="slip-title">Where this link goes</h1>
-    <p class="slip-sub">The destination, with the tracking parameters already removed. Nothing about you was read to show it.</p>
-
-    <div class="dest">
-      <span class="dest-label">Short link</span>
-      <p class="dest-short mono">{{.BaseDomain}}/{{.Slug}}</p>
-      <span class="dest-label">Goes to</span>
-      <div class="dest-row">
-        <p class="dest-url mono"><span class="dest-host">{{hostOf .CleanURL}}</span><span class="dest-rest">{{restOf .CleanURL}}</span></p>
-        <button type="button" class="iconbtn iconbtn-sm copy-btn" data-copy="{{.CleanURL}}" aria-label="Copy the destination" title="Copy the destination"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg></button>
-      </div>
-      <div class="dest-pills">
-        <span class="label label-ok"><svg class="i" aria-hidden="true"><use href="#i-eye-off"/></svg>No visitor tracking</span>
-        {{if .HasPIN}}<span class="label label-warn"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>PIN protected</span>{{end}}
-      </div>
+<div class="container-md dl">
+  <div class="dl-hero rise">
+    <span class="fi fi-lg" data-kind="{{if .HasPIN}}pin{{else}}link{{end}}" aria-hidden="true"><svg><use href="#{{if .HasPIN}}i-lock{{else}}i-link{{end}}"/></svg></span>
+    <h1>Where this link goes</h1>
+    <div class="sub">
+      <span class="badge" data-tone="ice"><svg aria-hidden="true"><use href="#i-eye-off"/></svg>No visitor tracking</span>
+      {{if .HasPIN}}<span class="badge" data-tone="ice"><svg aria-hidden="true"><use href="#i-lock"/></svg>PIN protected</span>{{end}}
+      {{if .StrippedParams}}<span class="badge" data-tone="accent"><svg aria-hidden="true"><use href="#i-scissors"/></svg>{{len .StrippedParams}} tracking {{if eq (len .StrippedParams) 1}}parameter{{else}}parameters{{end}} cut</span>{{end}}
     </div>
-
-    {{if .StrippedParams}}
-    <div class="stripped">
-      <p class="stripped-title"><svg class="i" aria-hidden="true"><use href="#i-scissors"/></svg>{{len .StrippedParams}} tracking {{if eq (len .StrippedParams) 1}}parameter{{else}}parameters{{end}} cut</p>
-      <div class="strip-badges">{{range .StrippedParams}}<span class="q q-strip">{{.}}</span>{{end}}</div>
-    </div>
-    {{else}}
-    <p class="hint">This destination carried no tracking parameters.</p>
-    {{end}}
-
-    {{if .IsExpired}}
-    <div class="notice notice-err" role="status">
-      <svg class="i" aria-hidden="true"><use href="#i-hourglass"/></svg>
-      <p><strong>This link has ended.</strong> {{.ExpiryReason}}</p>
-    </div>
-    {{else}}
-    <div class="slip-actions">
-      {{if .HasPIN}}
-      <a href="/pin/{{.Slug}}" class="btn btn-primary btn-lg"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Unlock with PIN</a>
-      {{else}}
-      <a href="/{{.Slug}}?direct=true" class="btn btn-primary btn-lg">Continue to destination<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
-      {{end}}
-      {{if .QRForgeURL}}<a href="{{.QRForgeLink}}" target="_blank" rel="noopener" class="btn btn-secondary btn-lg"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg>QR code in QR-Forge</a>{{end}}
-    </div>
-    {{end}}
+    <p class="dl-lede">The destination, with the tracking parameters already removed. Nothing about you was read to show it.</p>
   </div>
+
+  <dl class="meta">
+    <div>
+      <dt><svg aria-hidden="true"><use href="#i-link"/></svg>Short link</dt>
+      <dd class="mono">{{.BaseDomain}}/{{.Slug}}</dd>
+    </div>
+    <div>
+      <dt><svg aria-hidden="true"><use href="#i-arrow-right"/></svg>Goes to</dt>
+      <dd class="mono dest-cell"><span class="dest-text">{{.CleanURL}}</span><button type="button" class="btn btn-ghost btn-icon-sm copy-btn" data-copy="{{.CleanURL}}" aria-label="Copy the destination" title="Copy the destination"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></dd>
+    </div>
+    <div>
+      <dt><svg aria-hidden="true"><use href="#i-scissors"/></svg>Cut on the way</dt>
+      <dd>{{if .StrippedParams}}<span class="strip-badges">{{range .StrippedParams}}<span class="q q-strip">{{.}}</span>{{end}}</span>{{else}}<span class="muted">Nothing: this destination carried no tracking parameters.</span>{{end}}</dd>
+    </div>
+    <div>
+      <dt><svg aria-hidden="true"><use href="#i-flame"/></svg>Status</dt>
+      <dd class="{{if .IsExpired}}danger{{else}}ok{{end}}">{{if .IsExpired}}Ended{{else}}Answering{{end}}</dd>
+    </div>
+  </dl>
+
+  {{if .IsExpired}}
+  <div class="note" data-tone="danger" role="status">
+    <p class="note-title"><svg aria-hidden="true"><use href="#i-hourglass"/></svg>This link has ended</p>
+    <p>{{.ExpiryReason}}</p>
+  </div>
+  {{else}}
+  <div class="dl-actions">
+    {{if .HasPIN}}
+    <a href="/pin/{{.Slug}}" class="btn btn-primary btn-lg"><svg aria-hidden="true"><use href="#i-lock"/></svg>Unlock with PIN</a>
+    {{else}}
+    <a href="/{{.Slug}}?direct=true" class="btn btn-primary btn-lg">Continue to destination<svg aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+    {{end}}
+    {{if .QRForgeURL}}<a href="{{.QRForgeLink}}" target="_blank" rel="noopener" class="btn btn-secondary btn-icon-lg" aria-label="QR code in QR-Forge" title="QR code in QR-Forge"><svg aria-hidden="true"><use href="#i-qr"/></svg></a>{{end}}
+  </div>
+  <p class="dl-fine">The click is counted. Who clicked is not.</p>
+  {{end}}
+  <p class="dl-back"><a href="/">Shorten your own links with LinkUp</a></p>
 </div>
 {{end}}

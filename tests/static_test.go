@@ -31,7 +31,7 @@ func TestStaticAssetsAreServed(t *testing.T) {
 	}{
 		{"/static/css/app.css", "text/css"},
 		{"/static/js/app.js", "javascript"},
-		{"/static/fonts/geist.woff2", "font"},
+		{"/static/fonts/inter.woff2", "font"},
 	}
 
 	for _, tc := range cases {

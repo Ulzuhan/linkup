@@ -5,6 +5,50 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The interface is the family's now.** The dashboard, the front page and
+  the public pages are rebuilt on the same hand-written design system as
+  DocDrop, class for class: the glass header with the brand on the left and
+  the account menu and theme switch on the right, the ember accent for what
+  acts or counts down and ice for what is private, Space Grotesk, Inter and
+  JetBrains Mono shipped inside the binary, cards on a canvas of two glows
+  and a dot grid, and the same footer with the house credit. Dark by
+  default with a light theme behind the switch, kept under the same
+  `localStorage.theme` contract (`dark`, `light` or `system`) as the other
+  tools and resolved before the first paint; `?theme=light|dark` on any
+  address forces one look for that page load.
+- **The dashboard reads like DocDrop's.** A paste card where the drop zone
+  would be, with the strip preview showing the pasted URL with the tracking
+  parameters struck through next to what will be stored; a "New links"
+  panel beside it with segmented controls for expiry, click budget and
+  redirect code, the PIN, and everything else (slug, domain, folder, tags,
+  routing) behind one disclosure; a summary line that says what the next
+  link will be. Links are cards with an icon tile, the short address, the
+  destination, the clicks, the rules, the actions, and a ring that shows
+  how much of the click budget or the lifetime is left. Folder chips and a
+  search box (`/` focuses it) sit above the list; tags are clickable filters.
+- **Settings has a home.** It is reached from the header and the account
+  menu, and it now carries an Appearance section (light, dark or system)
+  alongside API keys, domains, webhooks and import/export, each as a card.
+- Folders get a dialog with a name and a colour instead of `prompt()`; every
+  destructive action asks in a dialog instead of `confirm()`. The CSV import
+  is a drop zone that reports what happened.
+- The overview says something: trackers cut across the whole collection in
+  the page head, clicks and links under the list. The webhook form offers
+  the events the server actually emits (`link.created`,
+  `link.self_destructed`, `link.deleted`); it used to offer
+  `link.expired_ttl`, which nothing dispatches. The public preview no longer
+  links to QR-Forge when no QR-Forge is configured, and the PIN page no
+  longer offers a link that led straight back to itself.
+
+### Removed
+
+- `static/css/kaicorp.css` and `static/css/landing-polish.css`, the copies
+  synced from the kaicorplabs repository. The house look is now in LinkUp's
+  own stylesheet, ported from DocDrop; a future `sync-theme.sh` run would
+  copy the two files back and nothing would reference them.
+
 ## [0.7.1] - 2026-09-15
 
 ### Fixed

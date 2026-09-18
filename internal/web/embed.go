@@ -92,6 +92,64 @@ func funcs() template.FuncMap {
 		"state":    linkState,
 		"initial":  initial,
 		"join":     func(sep string, xs []string) string { return strings.Join(xs, sep) },
+		// The rings on the cards: how much of a budget or a lifetime is left,
+		// as a percentage, and the dash offset that draws it on a circle of
+		// circumference 100.
+		"budgetLeft": budgetLeft,
+		"lifeLeft":   lifeLeft,
+		"dash":       func(pct int) int { return 100 - pct },
+		"remaining":  remaining,
+	}
+}
+
+// budgetLeft is the share of a click budget still unspent, 0–100. A link
+// without a budget has nothing to draw and answers 0.
+func budgetLeft(l models.Link) int {
+	if l.MaxClicks == nil || *l.MaxClicks <= 0 {
+		return 0
+	}
+	left := 100 - percent(l.ClickCount, *l.MaxClicks)
+	if left < 0 {
+		return 0
+	}
+	return left
+}
+
+// lifeLeft is the share of a link's lifetime still ahead, 0–100, measured
+// from when it was created to when it expires. Without an expiry, 0.
+func lifeLeft(l models.Link) int {
+	if l.ExpiresAt == nil || *l.ExpiresAt <= 0 || *l.ExpiresAt <= l.CreatedAt {
+		return 0
+	}
+	now := time.Now().Unix()
+	if now >= *l.ExpiresAt {
+		return 0
+	}
+	left := int(float64(*l.ExpiresAt-now) / float64(*l.ExpiresAt-l.CreatedAt) * 100)
+	if left > 100 {
+		return 100
+	}
+	if left < 0 {
+		return 0
+	}
+	return left
+}
+
+// remaining is the time until a moment, in the coarsest unit that is still
+// honest and short enough for a ring label: "3d", "22h", "41m". A moment
+// already past is "0m".
+func remaining(v interface{}) string {
+	n := asInt64(v)
+	d := time.Until(time.Unix(n, 0))
+	switch {
+	case n <= 0 || d <= 0:
+		return "0m"
+	case d >= 48*time.Hour:
+		return strconv.Itoa(int(d.Hours()/24)) + "d"
+	case d >= time.Hour:
+		return strconv.Itoa(int(d.Hours())) + "h"
+	default:
+		return strconv.Itoa(int(d.Minutes())+1) + "m"
 	}
 }
 

@@ -1,14 +1,14 @@
 /* LinkUp — the script.
  *
  * Everything here is an enhancement: every form posts on its own, the
- * account menu is a <details>, the options panel is a <details>. What the
- * script adds is the live strip preview, the dialogs, the toasts, relative
- * times, the search box, and the calls to the JSON API for the actions that
- * have no form (edit, delete, folders, keys, domains, webhooks, CSV).
+ * account menu is a <details>, the extra options are a <details>. What the
+ * script adds is the live strip preview, the sliding thumb on the segmented
+ * controls, the dialogs, the toasts, relative times, the search box, and
+ * the calls to the JSON API for the actions that have no form (edit,
+ * delete, folders, keys, domains, webhooks, CSV).
  *
  * Nothing here talks to anyone but this origin, and nothing here reads
- * anything about a visitor: the public pages get relative times and a
- * theme switch and that is all.
+ * anything about a visitor.
  */
 (() => {
   'use strict';
@@ -26,9 +26,8 @@
 
   // A fresh <svg><use> for something the script builds. The symbols live in
   // the layout.
-  const icon = (name, cls = 'i') => {
+  const icon = (name) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', cls);
     svg.setAttribute('aria-hidden', 'true');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttribute('href', '#' + name);
@@ -37,18 +36,27 @@
   };
 
   /* ── Toasts ─────────────────────────────────────────────────────────── */
-  function toast(message, kind = 'info', ms = 4000) {
+  function toast(title, kind = 'info', description) {
     const host = $('#toasts');
     if (!host) return;
-    const t = el('div', `toast toast-${kind}`);
+    const t = el('div', 'toast');
+    t.dataset.kind = kind;
     t.setAttribute('role', 'status');
-    t.appendChild(icon(kind === 'ok' ? 'i-check' : kind === 'err' ? 'i-alert' : 'i-info'));
-    t.appendChild(el('span', null, message));
+    const ic = el('span', 'toast-icon');
+    ic.setAttribute('aria-hidden', 'true');
+    ic.appendChild(icon(kind === 'success' ? 'i-circle-check' : kind === 'error' ? 'i-circle-x' : 'i-info'));
+    const body = el('div', 'toast-body');
+    body.appendChild(el('strong', null, title));
+    if (description) body.appendChild(el('span', null, description));
+    const close = el('button', 'btn btn-ghost btn-icon-sm');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.appendChild(icon('i-x'));
+    t.append(ic, body, close);
     host.appendChild(t);
-    requestAnimationFrame(() => t.classList.add('in'));
-    const remove = () => { t.classList.remove('in'); setTimeout(() => t.remove(), 220); };
-    const timer = setTimeout(remove, ms);
-    on(t, 'click', () => { clearTimeout(timer); remove(); });
+    const remove = () => { t.classList.add('is-out'); setTimeout(() => t.remove(), 220); };
+    const timer = setTimeout(remove, kind === 'error' ? 8000 : 4000);
+    on(close, 'click', () => { clearTimeout(timer); remove(); });
   }
 
   /* ── Dialogs ────────────────────────────────────────────────────────── */
@@ -58,7 +66,7 @@
   function wireDialog(d) {
     if (!d) return;
     $$('[data-close]', d).forEach((b) => on(b, 'click', () => closeDialog(d)));
-    // A click on the backdrop lands on the dialog itself; one on the content
+    // A click on the backdrop lands on the dialog itself; one on the panel
     // lands on a child.
     on(d, 'click', (e) => { if (e.target === d) closeDialog(d); });
   }
@@ -148,22 +156,74 @@
     });
   }
 
-  /* ── Theme ──────────────────────────────────────────────────────────── */
-  function setupTheme() {
-    const btn = $('#theme-toggle');
-    if (!btn) return;
+  /* ── Theme ──────────────────────────────────────────────────────────────
+     The same contract as the rest of the family and as theme.js in <head>:
+     localStorage.theme is "dark", "light" or "system", dark is the default,
+     the resolved value is a class on <html> plus color-scheme. The header
+     button flips between light and dark; the setting in Settings can also
+     say "system". */
+  const media = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+  // A ?theme= in the address wins for this page load, as theme.js already
+  // honoured before the first paint, until the person changes the theme.
+  let forced = (() => {
+    try { const v = new URLSearchParams(location.search).get('theme'); return v === 'light' || v === 'dark' ? v : null; }
+    catch (e) { return null; }
+  })();
+  const storedTheme = () => {
+    if (forced) return forced;
+    try { const v = localStorage.getItem('theme'); return v === 'light' || v === 'dark' || v === 'system' ? v : 'dark'; }
+    catch (e) { return 'dark'; }
+  };
+  const resolveTheme = (t) => (t === 'system' ? (media && media.matches ? 'dark' : 'light') : t);
+  function applyTheme() {
+    const resolved = resolveTheme(storedTheme());
     const root = document.documentElement;
-    const label = () => {
-      const dark = root.getAttribute('data-theme') !== 'light';
-      btn.setAttribute('aria-label', dark ? 'Switch to the light theme' : 'Switch to the dark theme');
-      btn.title = btn.getAttribute('aria-label');
-    };
-    label();
-    on(btn, 'click', () => {
-      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      root.setAttribute('data-theme', next);
-      try { localStorage.setItem('lk-theme', next); } catch (e) { /* storage off: the choice lasts the page */ }
-      label();
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolved);
+    root.style.colorScheme = resolved;
+    const btn = $('#theme-toggle');
+    if (btn) {
+      btn.setAttribute('aria-label', resolved === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      btn.title = resolved === 'dark' ? 'Light theme' : 'Dark theme';
+    }
+  }
+  function setTheme(t) {
+    forced = null;
+    try { localStorage.setItem('theme', t); } catch (e) { /* private mode: the choice lasts the page */ }
+    applyTheme();
+    const seg = $('#theme-seg');
+    if (seg) $$('input', seg).forEach((r) => { r.checked = r.value === t; });
+    if (seg) syncSegment(seg);
+  }
+  function setupTheme() {
+    applyTheme();
+    on($('#theme-toggle'), 'click', () => setTheme(resolveTheme(storedTheme()) === 'dark' ? 'light' : 'dark'));
+    const seg = $('#theme-seg');
+    if (seg) {
+      const current = storedTheme();
+      $$('input', seg).forEach((r) => { r.checked = r.value === current; });
+      on(seg, 'change', (e) => { if (e.target && e.target.value) setTheme(e.target.value); });
+    }
+    if (media) on(media, 'change', () => { if (storedTheme() === 'system') applyTheme(); });
+  }
+
+  /* ── Segmented controls: a thumb that slides under the chosen option ── */
+  function syncSegment(seg) {
+    const opts = $$('.seg-opt', seg);
+    const index = Math.max(0, opts.findIndex((o) => { const r = $('input', o); return r && r.checked; }));
+    seg.style.setProperty('--n', String(opts.length));
+    seg.style.setProperty('--i', String(index));
+  }
+  function setupSegments() {
+    $$('.seg').forEach((seg) => {
+      if (!$('.seg-thumb', seg)) {
+        const thumb = el('span', 'seg-thumb');
+        thumb.setAttribute('aria-hidden', 'true');
+        seg.prepend(thumb);
+      }
+      seg.dataset.js = 'true';
+      syncSegment(seg);
+      on(seg, 'change', () => syncSegment(seg));
     });
   }
 
@@ -184,7 +244,7 @@
       const ta = el('textarea');
       ta.value = text;
       ta.setAttribute('readonly', '');
-      ta.className = 'sr-only';
+      ta.className = 'visually-hidden';
       document.body.appendChild(ta);
       ta.select();
       let ok = false;
@@ -200,8 +260,8 @@
       const text = btn.getAttribute('data-copy');
       if (!text) return;
       const ok = await copyText(text);
-      if (!ok) { toast('Could not copy. Select the text and copy it by hand.', 'err'); return; }
-      toast('Copied to clipboard', 'ok', 1800);
+      if (!ok) { toast('Could not copy', 'error', text); return; }
+      toast('Copied', 'success');
       const use = btn.querySelector('use');
       if (use) {
         const was = use.getAttribute('href');
@@ -239,8 +299,8 @@
     stripped.forEach((p) => target.appendChild(el('span', 'q q-strip', p)));
   }
   const countText = (n) => (n === 0
-    ? 'Nothing to strip. Stored exactly as pasted.'
-    : `${n} tracking ${n === 1 ? 'parameter' : 'parameters'} stripped`);
+    ? 'Nothing to strip: stored exactly as pasted.'
+    : `${n} tracking ${n === 1 ? 'parameter' : 'parameters'} cut`);
 
   /* ── The cleaner, mirrored for the front page ───────────────────────────
      The demo on the front page runs here so that nothing typed into it is
@@ -358,22 +418,33 @@
       const d = (domainSel && domainSel.value) || defaultDomain;
       const s = slug ? slug.value.trim() : '';
       preview.textContent = `${d}/${s || '…'}`;
-      preview.classList.toggle('muted', !s);
     };
     on(slug, 'input', renderSlug);
     on(domainSel, 'change', renderSlug);
     renderSlug();
 
-    // Quick expiry: a tap fills the hours, a second tap on the same clears it.
-    const hours = $('#expires_in_hours', form);
-    const quick = $$('.quick-btn[data-hours]', form);
-    const syncQuick = () => quick.forEach((b) => b.classList.toggle('is-on', hours.value === b.getAttribute('data-hours')));
-    quick.forEach((b) => on(b, 'click', () => {
-      const h = b.getAttribute('data-hours');
-      hours.value = hours.value === h ? '' : h;
-      syncQuick();
-    }));
-    on(hours, 'input', syncQuick);
+    // "Each link will …": the summary follows the choices.
+    const summary = $('#opts-summary', form);
+    const setBadge = (name, text) => {
+      const b = summary && $(`[data-summary="${name}"]`, summary);
+      if (!b) return;
+      Array.from(b.childNodes).forEach((n) => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
+      b.appendChild(document.createTextNode(text));
+    };
+    const hoursLabel = (h) => (h >= 720 ? `${Math.round(h / 720)} month${h >= 1440 ? 's' : ''}` : h >= 168 ? `${Math.round(h / 168)} week${h >= 336 ? 's' : ''}` : h >= 24 ? `${Math.round(h / 24)} day${h >= 48 ? 's' : ''}` : `${h} h`);
+    const renderSummary = () => {
+      const exp = form.querySelector('input[name="expires_in_hours"]:checked');
+      const max = form.querySelector('input[name="max_clicks"]:checked');
+      const pin = $('#pin', form);
+      const hours = exp && exp.value ? parseInt(exp.value, 10) : 0;
+      setBadge('expires', hours ? `expire in ${hoursLabel(hours)}` : 'never expire');
+      const n = max && max.value ? parseInt(max.value, 10) : 0;
+      setBadge('clicks', n ? `${n.toLocaleString()} click${n === 1 ? '' : 's'} at most` : 'unlimited clicks');
+      setBadge('pin', pin && pin.value.trim() ? 'ask for a PIN' : 'open to anyone with the link');
+    };
+    on(form, 'change', renderSummary);
+    on($('#pin', form), 'input', renderSummary);
+    renderSummary();
 
     on(form, 'submit', () => { const b = $('#create-submit', form); if (b) b.classList.add('is-busy'); });
   }
@@ -386,7 +457,7 @@
     const empty = $('#search-empty');
 
     if (search && list) {
-      const rows = $$('.link', list);
+      const rows = $$('.fc', list);
       const total = rows.length;
       const apply = () => {
         const q = search.value.trim().toLowerCase();
@@ -396,7 +467,7 @@
           r.hidden = !hit;
           if (hit) shown++;
         });
-        if (count) count.textContent = q ? `${shown} of ${total}` : `${total} ${total === 1 ? 'link' : 'links'}`;
+        if (count) count.textContent = q ? `${shown} of ${total}` : String(total);
         if (empty) empty.hidden = shown !== 0;
         list.hidden = shown === 0;
       };
@@ -421,14 +492,14 @@
       const slug = btn.getAttribute('data-slug');
       const yes = await confirmDialog({
         title: `Delete /${slug}?`,
-        message: 'The short link stops answering immediately. This cannot be undone.',
-        confirmLabel: 'Delete link',
+        message: 'The short link stops answering immediately. Anyone holding it will find it gone.',
+        confirmLabel: 'Delete',
       });
       if (!yes) return;
       try {
         await api(`/api/links/${encodeURIComponent(id)}`, { method: 'DELETE' });
         reloadWith(`Deleted /${slug}`);
-      } catch (err) { toast(err.message, 'err'); }
+      } catch (err) { toast('Could not delete it', 'error', err.message); }
     });
   }
 
@@ -502,7 +573,7 @@
         f('edit-save').disabled = false;
         openDialog(d);
         f('edit-url').focus();
-      } catch (err) { toast(err.message, 'err'); }
+      } catch (err) { toast('Could not load the link', 'error', err.message); }
     });
 
     on(f('edit-cancel'), 'click', () => closeDialog(d));
@@ -562,7 +633,7 @@
         save.textContent = m === 'create' ? 'Create folder' : 'Save';
         save.disabled = false;
         name.value = data.name || '';
-        const c = (data.color || '#22d3ee').toLowerCase();
+        const c = (data.color || '').toLowerCase();
         const radios = $$('input[name="color"]', d);
         let matched = false;
         radios.forEach((r) => { const hit = r.value.toLowerCase() === c; r.checked = hit; matched = matched || hit; });
@@ -606,7 +677,7 @@
     on(deleteBtn, 'click', async () => {
       const id = deleteBtn.getAttribute('data-id');
       const n = deleteBtn.getAttribute('data-name') || 'this folder';
-      const c = $$('#links .link').length;
+      const c = $$('#links .fc').length;
       const links = c === 1 ? '1 link' : `${c} links`;
       const yes = await confirmDialog({
         title: `Delete the folder “${n}”?`,
@@ -617,16 +688,16 @@
       try {
         await api(`/api/folders/${encodeURIComponent(id)}`, { method: 'DELETE' });
         reloadWith(`Folder “${n}” deleted. Its links are back in All links.`, '/');
-      } catch (ex) { toast(ex.message, 'err'); }
+      } catch (ex) { toast('Could not delete the folder', 'error', ex.message); }
     });
   }
 
   /* ── Settings ───────────────────────────────────────────────────────── */
   function setupSettings() {
     const kinds = [
-      { sel: '.delete-api-key-btn', path: '/api/keys/', title: (n) => `Revoke the key “${n}”?`, msg: 'Anything still using it stops working immediately.', label: 'Revoke key', done: 'API key revoked' },
-      { sel: '.delete-domain-btn', path: '/api/domains/', title: (n) => `Remove ${n}?`, msg: 'New links can no longer be created under this domain.', label: 'Remove domain', done: 'Domain removed' },
-      { sel: '.delete-webhook-btn', path: '/api/webhooks/', title: () => 'Delete this webhook?', msg: 'No more deliveries go to this endpoint.', label: 'Delete webhook', done: 'Webhook deleted' },
+      { sel: '.delete-api-key-btn', path: '/api/keys/', title: (n) => `Revoke the key “${n}”?`, msg: 'Anything still using it stops working immediately.', label: 'Revoke', done: 'API key revoked' },
+      { sel: '.delete-domain-btn', path: '/api/domains/', title: (n) => `Remove ${n}?`, msg: 'New links can no longer be created under this domain.', label: 'Remove', done: 'Domain removed' },
+      { sel: '.delete-webhook-btn', path: '/api/webhooks/', title: () => 'Delete this webhook?', msg: 'No more deliveries go to this endpoint.', label: 'Delete', done: 'Webhook deleted' },
     ];
     on(document, 'click', async (e) => {
       for (const k of kinds) {
@@ -639,7 +710,7 @@
         try {
           await api(k.path + encodeURIComponent(id), { method: 'DELETE' });
           reloadWith(k.done, '/settings');
-        } catch (ex) { toast(ex.message, 'err'); }
+        } catch (ex) { toast('That did not work', 'error', ex.message); }
         return;
       }
     });
@@ -654,12 +725,15 @@
         zone.classList.add('is-busy');
         result.hidden = true;
         result.textContent = '';
-        result.classList.remove('is-err');
+        result.dataset.tone = '';
         const fd = new FormData();
         fd.append('file', file);
         try {
           const data = await api('/api/links/bulk-import', { method: 'POST', form: fd });
-          result.appendChild(el('strong', null, `${data.total_created} created, ${data.total_skipped} skipped, ${data.total_processed} rows read.`));
+          const title = el('p', 'note-title');
+          title.appendChild(icon('i-circle-check'));
+          title.appendChild(document.createTextNode(`${data.total_created} created, ${data.total_skipped} skipped, ${data.total_processed} rows read.`));
+          result.appendChild(title);
           if (data.errors && data.errors.length) {
             const ul = el('ul');
             data.errors.slice(0, 50).forEach((m) => ul.appendChild(el('li', null, m)));
@@ -668,11 +742,12 @@
           const a = el('a', null, 'See the links');
           a.href = '/';
           result.appendChild(a);
+          result.dataset.tone = 'ok';
           result.hidden = false;
-          toast(`Imported ${data.total_created} ${data.total_created === 1 ? 'link' : 'links'}`, 'ok');
+          toast(`Imported ${data.total_created} ${data.total_created === 1 ? 'link' : 'links'}`, 'success');
         } catch (ex) {
           result.textContent = ex.message;
-          result.classList.add('is-err');
+          result.dataset.tone = 'danger';
           result.hidden = false;
         } finally {
           zone.classList.remove('is-busy');
@@ -684,26 +759,11 @@
       ['dragleave', 'drop'].forEach((t) => on(zone, t, (e) => { e.preventDefault(); zone.classList.remove('is-over'); }));
       on(zone, 'drop', (e) => send(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]));
     }
-
-    // The section nav follows the scroll. There may be two: one in the
-    // sidebar, one as chips on a phone.
-    const links = $$('.subnav a[href^="#"]');
-    if (links.length && 'IntersectionObserver' in window) {
-      const sections = Array.from(new Set(links.map((a) => $(a.getAttribute('href'))).filter(Boolean)));
-      const setCurrent = (id) => links.forEach((a) => {
-        if (a.getAttribute('href') === '#' + id) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
-      });
-      const io = new IntersectionObserver((entries) => {
-        const visible = entries.filter((x) => x.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setCurrent(visible[0].target.id);
-      }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
-      sections.forEach((s) => io.observe(s));
-      if (sections[0]) setCurrent(sections[0].id);
-    }
   }
 
   /* ── Go ─────────────────────────────────────────────────────────────── */
   function init() {
+    setupSegments();
     setupTheme();
     setupAccountMenu();
     setupNotices();

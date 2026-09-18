@@ -1,179 +1,166 @@
-{{define "sidebar"}}
-<div class="side-block">
-  <h2 class="side-title">On this page</h2>
-  <nav class="side-list subnav" aria-label="Sections">
-    <a href="#api-keys" class="side-item"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg><span class="side-item-text">API keys</span></a>
-    <a href="#domains" class="side-item"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span class="side-item-text">Domains</span></a>
-    <a href="#webhooks" class="side-item"><svg class="i" aria-hidden="true"><use href="#i-webhook"/></svg><span class="side-item-text">Webhooks</span></a>
-    <a href="#data" class="side-item"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg><span class="side-item-text">Import &amp; export</span></a>
-  </nav>
-</div>
-{{end}}
-
 {{define "content"}}
-<div class="page">
-  <div class="page-head">
-    <div class="page-head-copy">
-      <p class="kicker">Account</p>
-      <h1 class="page-title">Settings</h1>
-      <p class="page-sub">API keys, your own domains, webhooks, and moving links in and out in bulk.</p>
+<div class="container-md dash workspace">
+  <div class="dash-head rise">
+    <div>
+      <h1>Settings</h1>
+      <p>How LinkUp looks, and what talks to it: API keys, your own domains, webhooks, import and export.</p>
     </div>
   </div>
-
-  <nav class="chips only-mobile subnav" aria-label="Sections">
-    <a href="#api-keys" class="chip">API keys</a>
-    <a href="#domains" class="chip">Domains</a>
-    <a href="#webhooks" class="chip">Webhooks</a>
-    <a href="#data" class="chip">Import &amp; export</a>
-  </nav>
 
   {{template "notices" .}}
 
   {{if .NewAPIKey}}
-  <div class="keybox" role="status">
-    <div class="keybox-head">
-      <h3><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Your new API key</h3>
-      <p>Copy it now. This is the only time it is shown in full: only a hash of it is kept.</p>
+  <div class="note keybox" data-tone="warn" role="status">
+    <p class="note-title"><svg aria-hidden="true"><use href="#i-key"/></svg>Your new API key</p>
+    <p>Copy it now. This is the only time it is shown in full: only a hash of it is kept.</p>
+    <div class="linkbox">
+      <svg aria-hidden="true"><use href="#i-key"/></svg>
+      <code title="{{.NewAPIKey}}"><b>{{.NewAPIKey}}</b></code>
+      <button type="button" class="btn btn-primary btn-sm copy-btn" data-copy="{{.NewAPIKey}}"><svg aria-hidden="true"><use href="#i-copy"/></svg>Copy key</button>
     </div>
-    <div class="keybox-row">
-      <input type="text" readonly value="{{.NewAPIKey}}" class="input input-mono keybox-input" aria-label="New API key" spellcheck="false">
-      <button type="button" class="btn btn-primary copy-btn" data-copy="{{.NewAPIKey}}"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>Copy key</button>
-    </div>
-    <p class="hint">Send it as <code>Authorization: Bearer &lt;key&gt;</code>. A key carries no admin rights, even if its owner has them.</p>
+    <p>Send it as <code>Authorization: Bearer &lt;key&gt;</code>. A key carries no admin rights, even if its owner has them.</p>
   </div>
   {{end}}
 
-  <section class="block" id="api-keys" aria-labelledby="keys-title">
-    <div class="block-head">
-      <h2 class="block-title" id="keys-title"><span class="num">01</span>API keys</h2>
-      <p class="block-sub">Bearer tokens for scripts, a CLI, Raycast or a bot. Stored as SHA-256 hashes.</p>
-    </div>
-    <form method="POST" action="/settings/keys" class="inline-form">
-      <label class="sr-only" for="key-name">Key name</label>
-      <input type="text" id="key-name" name="name" placeholder="Name it after what uses it: Raycast, CI, Telegram bot" class="input" required autocomplete="off">
-      <button type="submit" class="btn btn-primary"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Generate key</button>
-    </form>
-    {{if .APIKeys}}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Name</th><th>Created</th><th>Last used</th><th class="right"><span class="sr-only">Actions</span></th></tr></thead>
-        <tbody>
-          {{range .APIKeys}}
-          <tr>
-            <td data-label="Name"><strong>{{.Name}}</strong><div class="mono muted small">{{.KeyPrefix}}</div></td>
-            <td data-label="Created"><time datetime="{{iso .CreatedAt}}" data-rel>{{date .CreatedAt}}</time></td>
-            <td data-label="Last used">{{if .LastUsedAt}}<time datetime="{{iso .LastUsedAt}}" data-rel>{{date .LastUsedAt}}</time>{{else}}<span class="muted">Never</span>{{end}}</td>
-            <td class="right"><button type="button" class="btn btn-ghost btn-sm btn-ghost-danger delete-api-key-btn" data-id="{{.ID}}" data-name="{{.Name}}"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Revoke</button></td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
-    {{else}}
-    <p class="empty-note">No API keys yet.</p>
-    {{end}}
-  </section>
-
-  <section class="block" id="domains" aria-labelledby="domains-title">
-    <div class="block-head">
-      <h2 class="block-title" id="domains-title"><span class="num">02</span>Your own domains</h2>
-      <p class="block-sub">Point a domain you own at this instance and short links come out under it. New links use <span class="mono">{{.DefaultDomain}}</span> unless you pick another.</p>
-    </div>
-    <form method="POST" action="/settings/domains" class="inline-form">
-      <label class="sr-only" for="domain-name">Domain</label>
-      <input type="text" id="domain-name" name="domain" placeholder="go.example.com" class="input input-mono" required autocomplete="off" spellcheck="false">
-      <button type="submit" class="btn btn-primary"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add domain</button>
-    </form>
-    {{if .CustomDomains}}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Domain</th><th>Status</th><th>Added</th><th class="right"><span class="sr-only">Actions</span></th></tr></thead>
-        <tbody>
-          {{range .CustomDomains}}
-          <tr>
-            <td data-label="Domain"><span class="mono">{{.Domain}}</span></td>
-            <td data-label="Status">{{if .IsVerified}}<span class="label label-ok"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Ready</span>{{else}}<span class="label label-warn">Pending</span>{{end}}</td>
-            <td data-label="Added"><time datetime="{{iso .CreatedAt}}" data-rel>{{date .CreatedAt}}</time></td>
-            <td class="right"><button type="button" class="btn btn-ghost btn-sm btn-ghost-danger delete-domain-btn" data-id="{{.ID}}" data-name="{{.Domain}}"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Remove</button></td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
-    {{else}}
-    <p class="empty-note">No custom domains. Everything goes out under <span class="mono">{{.DefaultDomain}}</span>.</p>
-    {{end}}
-  </section>
-
-  <section class="block" id="webhooks" aria-labelledby="webhooks-title">
-    <div class="block-head">
-      <h2 class="block-title" id="webhooks-title"><span class="num">03</span>Webhooks</h2>
-      <p class="block-sub">An HTTP POST, signed with HMAC-SHA256, when something happens to a link. Destinations are checked before storing and again before every delivery.</p>
-    </div>
-    <form method="POST" action="/settings/webhooks" class="stack-form">
-      <div class="form-grid">
-        <div class="field">
-          <label class="field-label" for="wh-url">Endpoint URL</label>
-          <input type="url" id="wh-url" name="url" placeholder="https://api.example.com/hooks/linkup" class="input input-mono" required spellcheck="false">
+  <div class="settings">
+    <section class="card opts" id="appearance" aria-labelledby="appearance-title">
+      <p class="card-title" id="appearance-title"><svg aria-hidden="true"><use href="#i-palette"/></svg>Appearance</p>
+      <div>
+        <span class="field-label"><svg aria-hidden="true"><use href="#i-moon"/></svg>Theme</span>
+        <div class="seg" id="theme-seg" role="radiogroup" aria-label="Theme">
+          <label class="seg-opt"><input type="radio" name="theme" value="light"><svg aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span></label>
+          <label class="seg-opt"><input type="radio" name="theme" value="dark"><svg aria-hidden="true"><use href="#i-moon"/></svg><span>Dark</span></label>
+          <label class="seg-opt"><input type="radio" name="theme" value="system"><svg aria-hidden="true"><use href="#i-monitor"/></svg><span>System</span></label>
         </div>
-        <div class="field">
-          <label class="field-label" for="wh-secret">Signing secret <span class="optional">generated if empty</span></label>
-          <input type="text" id="wh-secret" name="secret" placeholder="Leave empty to generate one" class="input input-mono" autocomplete="off" spellcheck="false">
+        <p class="choice-note">Remembered in this browser. The switch in the header flips between light and dark; this one can also follow the system.</p>
+      </div>
+    </section>
+
+    <section class="card opts" id="api-keys" aria-labelledby="keys-title">
+      <p class="card-title" id="keys-title"><svg aria-hidden="true"><use href="#i-key"/></svg>API keys</p>
+      <p class="muted">Bearer tokens for scripts, a CLI, Raycast or a bot. Stored as SHA-256 hashes.</p>
+      <form method="POST" action="/settings/keys" class="inline-form">
+        <label class="visually-hidden" for="key-name">Key name</label>
+        <input type="text" id="key-name" name="name" placeholder="Name it after what uses it: Raycast, CI, Telegram bot" class="input" required autocomplete="off">
+        <button type="submit" class="btn btn-primary"><svg aria-hidden="true"><use href="#i-plus"/></svg>Generate key</button>
+      </form>
+      {{if .APIKeys}}
+      <ul class="gl-items">
+        {{range .APIKeys}}
+        <li class="gl-item">
+          <div class="gl-item-row">
+            <span class="fi fi-sm" aria-hidden="true"><svg><use href="#i-key"/></svg></span>
+            <div class="gl-item-main">
+              <p class="gl-item-name">{{.Name}} <span class="mono faint">{{.KeyPrefix}}</span></p>
+              <p class="gl-item-sub">Created <time datetime="{{iso .CreatedAt}}" data-rel>{{date .CreatedAt}}</time> · {{if .LastUsedAt}}last used <time datetime="{{iso .LastUsedAt}}" data-rel>{{date .LastUsedAt}}</time>{{else}}never used{{end}}</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm btn-danger-hover delete-api-key-btn" data-id="{{.ID}}" data-name="{{.Name}}"><svg aria-hidden="true"><use href="#i-trash"/></svg>Revoke</button>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="gl-empty">No API keys yet.</p>
+      {{end}}
+    </section>
+
+    <section class="card opts" id="domains" aria-labelledby="domains-title">
+      <p class="card-title" id="domains-title"><svg aria-hidden="true"><use href="#i-globe"/></svg>Your own domains</p>
+      <p class="muted">Point a domain you own at this instance and short links come out under it. New links use <code>{{.DefaultDomain}}</code> unless you pick another.</p>
+      <form method="POST" action="/settings/domains" class="inline-form">
+        <label class="visually-hidden" for="domain-name">Domain</label>
+        <input type="text" id="domain-name" name="domain" placeholder="go.example.com" class="input mono" required autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-primary"><svg aria-hidden="true"><use href="#i-plus"/></svg>Add domain</button>
+      </form>
+      {{if .CustomDomains}}
+      <ul class="gl-items">
+        {{range .CustomDomains}}
+        <li class="gl-item">
+          <div class="gl-item-row">
+            <span class="fi fi-sm" aria-hidden="true"><svg><use href="#i-globe"/></svg></span>
+            <div class="gl-item-main">
+              <p class="gl-item-name mono">{{.Domain}}</p>
+              <p class="gl-item-sub">Added <time datetime="{{iso .CreatedAt}}" data-rel>{{date .CreatedAt}}</time></p>
+            </div>
+            {{if .IsVerified}}<span class="badge" data-tone="ok"><svg aria-hidden="true"><use href="#i-check"/></svg>Ready</span>{{else}}<span class="badge">Pending</span>{{end}}
+            <button type="button" class="btn btn-ghost btn-sm btn-danger-hover delete-domain-btn" data-id="{{.ID}}" data-name="{{.Domain}}"><svg aria-hidden="true"><use href="#i-trash"/></svg>Remove</button>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="gl-empty">No custom domains. Everything goes out under <code>{{.DefaultDomain}}</code>.</p>
+      {{end}}
+    </section>
+
+    <section class="card opts" id="webhooks" aria-labelledby="webhooks-title">
+      <p class="card-title" id="webhooks-title"><svg aria-hidden="true"><use href="#i-webhook"/></svg>Webhooks</p>
+      <p class="muted">An HTTP POST, signed with HMAC-SHA256, when something happens to a link. Destinations are checked before storing and again before every delivery.</p>
+      <form method="POST" action="/settings/webhooks" class="stack-form">
+        <div class="form-grid">
+          <div>
+            <label class="label" for="wh-url">Endpoint URL</label>
+            <input type="url" id="wh-url" name="url" placeholder="https://api.example.com/hooks/linkup" class="input mono" required spellcheck="false">
+          </div>
+          <div>
+            <label class="label" for="wh-secret">Signing secret <span class="faint">generated if empty</span></label>
+            <input type="text" id="wh-secret" name="secret" placeholder="Leave empty to generate one" class="input mono" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <fieldset class="fieldset">
+          <legend class="label">Events</legend>
+          <div class="checks">
+            <label class="check"><input type="checkbox" name="events" value="link.created" checked><span><code>link.created</code><small>A link was shortened</small></span></label>
+            <label class="check"><input type="checkbox" name="events" value="link.self_destructed" checked><span><code>link.self_destructed</code><small>A click budget was spent</small></span></label>
+            <label class="check"><input type="checkbox" name="events" value="link.deleted" checked><span><code>link.deleted</code><small>A link was deleted</small></span></label>
+          </div>
+        </fieldset>
+        <div><button type="submit" class="btn btn-primary"><svg aria-hidden="true"><use href="#i-plus"/></svg>Register webhook</button></div>
+      </form>
+      {{if .Webhooks}}
+      <ul class="gl-items">
+        {{range .Webhooks}}
+        <li class="gl-item">
+          <div class="gl-item-row">
+            <span class="fi fi-sm" aria-hidden="true"><svg><use href="#i-webhook"/></svg></span>
+            <div class="gl-item-main">
+              <p class="gl-item-name mono truncate" title="{{.URL}}">{{.URL}}</p>
+              <p class="gl-item-sub mono">{{.Events}}</p>
+            </div>
+            {{if .IsActive}}<span class="badge" data-tone="ok">Active</span>{{else}}<span class="badge">Paused</span>{{end}}
+            <button type="button" class="btn btn-ghost btn-sm btn-danger-hover delete-webhook-btn" data-id="{{.ID}}" data-name="{{.URL}}"><svg aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="gl-empty">No webhooks registered.</p>
+      {{end}}
+    </section>
+
+    <section class="card opts" id="data" aria-labelledby="data-title">
+      <p class="card-title" id="data-title"><svg aria-hidden="true"><use href="#i-file"/></svg>Import &amp; export</p>
+      <p class="muted">Your links are yours: take them all out as CSV, or bring a batch in.</p>
+      <div class="data-grid">
+        <div class="data-block">
+          <span class="field-label"><svg aria-hidden="true"><use href="#i-download"/></svg>Export</span>
+          <p class="choice-note">Every link with its slug, domain, destination, title, clicks and status.</p>
+          <a href="/api/links/export" class="btn btn-secondary"><svg aria-hidden="true"><use href="#i-download"/></svg>Download CSV</a>
+        </div>
+        <div class="data-block">
+          <span class="field-label"><svg aria-hidden="true"><use href="#i-upload"/></svg>Import</span>
+          <label class="dz dz-compact dropzone" id="dropzone" for="bulk-csv-upload">
+            <input type="file" id="bulk-csv-upload" accept=".csv,text/csv" class="visually-hidden">
+            <span class="dz-body">
+              <span class="fi" aria-hidden="true"><svg><use href="#i-file"/></svg></span>
+              <span class="dz-title">Drop a CSV here, or browse</span>
+              <span class="dz-fine">A <code>url</code> column is required. <code>slug</code>, <code>title</code>, <code>pin</code> and <code>max_clicks</code> are optional. Up to 10 MB.</span>
+            </span>
+          </label>
+          <div class="note import-result" id="csv-result" hidden aria-live="polite"></div>
         </div>
       </div>
-      <fieldset class="field">
-        <legend class="field-label">Events</legend>
-        <div class="checks">
-          <label class="check"><input type="checkbox" name="events" value="link.created" checked><span><span class="mono">link.created</span><small>A link was shortened</small></span></label>
-          <label class="check"><input type="checkbox" name="events" value="link.self_destructed" checked><span><span class="mono">link.self_destructed</span><small>A click budget was spent</small></span></label>
-          <label class="check"><input type="checkbox" name="events" value="link.deleted" checked><span><span class="mono">link.deleted</span><small>A link was deleted</small></span></label>
-        </div>
-      </fieldset>
-      <div><button type="submit" class="btn btn-primary"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Register webhook</button></div>
-    </form>
-    {{if .Webhooks}}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Endpoint</th><th>Events</th><th>Status</th><th class="right"><span class="sr-only">Actions</span></th></tr></thead>
-        <tbody>
-          {{range .Webhooks}}
-          <tr>
-            <td data-label="Endpoint"><span class="mono cell-url" title="{{.URL}}">{{.URL}}</span></td>
-            <td data-label="Events"><span class="mono small muted">{{.Events}}</span></td>
-            <td data-label="Status">{{if .IsActive}}<span class="label label-ok">Active</span>{{else}}<span class="label">Paused</span>{{end}}</td>
-            <td class="right"><button type="button" class="btn btn-ghost btn-sm btn-ghost-danger delete-webhook-btn" data-id="{{.ID}}" data-name="{{.URL}}"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button></td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
-    {{else}}
-    <p class="empty-note">No webhooks registered.</p>
-    {{end}}
-  </section>
-
-  <section class="block" id="data" aria-labelledby="data-title">
-    <div class="block-head">
-      <h2 class="block-title" id="data-title"><span class="num">04</span>Import &amp; export</h2>
-      <p class="block-sub">Your links are yours: take them all out as CSV, or bring a batch in.</p>
-    </div>
-    <div class="data-grid">
-      <div class="data-block">
-        <h3 class="data-title"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Export</h3>
-        <p class="hint">Every link with its slug, domain, destination, title, clicks and status.</p>
-        <a href="/api/links/export" class="btn btn-secondary">Download CSV</a>
-      </div>
-      <div class="data-block">
-        <h3 class="data-title"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Import</h3>
-        <label class="dropzone" id="dropzone" for="bulk-csv-upload">
-          <input type="file" id="bulk-csv-upload" accept=".csv,text/csv" class="sr-only">
-          <svg class="i dropzone-icon" aria-hidden="true"><use href="#i-file"/></svg>
-          <span class="dropzone-title">Drop a CSV here, or browse</span>
-          <span class="hint">A <span class="mono">url</span> column is required. <span class="mono">slug</span>, <span class="mono">title</span>, <span class="mono">pin</span> and <span class="mono">max_clicks</span> are optional. Up to 10 MB.</span>
-        </label>
-        <div class="import-result" id="csv-result" hidden aria-live="polite"></div>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
 </div>
 {{end}}

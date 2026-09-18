@@ -376,9 +376,10 @@
     const count = $('#strip-count');
     const badges = $('#strip-badges');
     const hint = $('#strip-hint');
+    const shred = $('#shred');
     let timer = 0;
     let seq = 0;
-    const hide = () => { box.hidden = true; hint.hidden = true; };
+    const hide = () => { box.hidden = true; hint.hidden = true; if (shred) shred.hidden = false; };
 
     on(input, 'input', () => {
       clearTimeout(timer);
@@ -397,9 +398,11 @@
           box.classList.toggle('is-clean', stripped.length === 0);
           box.hidden = false;
           hint.hidden = true;
+          if (shred) shred.hidden = true;
         } catch (err) {
           if (mine !== seq) return;
           box.hidden = true;
+          if (shred) shred.hidden = true;
           hint.textContent = '';
           hint.appendChild(icon('i-alert'));
           hint.appendChild(document.createTextNode(err.message));

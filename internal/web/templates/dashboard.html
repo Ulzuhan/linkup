@@ -6,8 +6,8 @@
       <p>Paste it, share it, and let the trackers stay behind.</p>
     </div>
     <div class="tools">
-      <span class="badge" data-tone="ice" title="No visitor address is ever read"><svg aria-hidden="true"><use href="#i-eye-off"/></svg>Zero tracking</span>
-      <span class="badge" title="Tracking parameters cut before storing, across all your links"><svg aria-hidden="true"><use href="#i-scissors"/></svg><span><span class="num">{{num .TotalStripped}}</span> trackers cut</span></span>
+      <span class="badge" data-tone="accent" title="No visitor address, User-Agent or cookie is ever stored. That number cannot go up."><svg aria-hidden="true"><use href="#i-eye-off"/></svg><span><span class="num">0</span> visitors identified</span></span>
+      <span class="badge" data-tone="danger" title="Tracking parameters cut before storing, across all your links"><svg aria-hidden="true"><use href="#i-scissors"/></svg><span><span class="num">{{num .TotalStripped}}</span> trackers cut</span></span>
     </div>
   </div>
 
@@ -22,9 +22,12 @@
       <div class="dash-grid">
         <div class="paste">
           <div class="paste-body">
-            <div class="dz-orb" aria-hidden="true"><svg><use href="#i-link"/></svg></div>
             <p class="dz-title">Paste a link</p>
             <p class="dz-sub">Tracking parameters come off as you type. The page's own parameters stay.</p>
+            <div class="shred" id="shred" aria-hidden="true">
+              <p class="shred-line"><span class="base">https://example.com/post</span><span class="sep">?</span><span class="cut c1">utm_source=newsletter</span><span class="sep">&amp;</span><span class="cut c2">fbclid=IwAR2x9</span><span class="sep">&amp;</span><span class="keep">id=7</span><span class="sep">&amp;</span><span class="cut c3">gclid=CjwKCA</span></p>
+              <p class="shred-foot"><span>What follows the reader comes off. What the page needs stays.</span><span class="badge" data-tone="danger"><svg aria-hidden="true"><use href="#i-scissors"/></svg>3 cut</span></p>
+            </div>
             <label class="visually-hidden" for="url">Destination URL</label>
             <div class="paste-row">
               <input type="text" id="url" name="url" class="input paste-input" placeholder="https://example.com/article?utm_source=…" required spellcheck="false" inputmode="url" enterkeyhint="go">

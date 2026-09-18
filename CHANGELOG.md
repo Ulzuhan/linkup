@@ -18,6 +18,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
   `localStorage.theme` contract (`dark`, `light` or `system`) as the other
   tools and resolved before the first paint; `?theme=light|dark` on any
   address forces one look for that page load.
+- **And a voice of its own inside that system.** LinkUp's accent is a teal
+  of its own (the family's ember stays for what runs out: expiry rings and
+  click budgets), the mark is a tilted link with the spark of a cut, and the
+  paste card shows the product instead of a decoration: an example URL
+  losing its trackers on a loop until you paste one. The page head counts
+  what LinkUp is about: trackers cut, and visitors identified, which is
+  zero and cannot go up.
 - **The dashboard reads like DocDrop's.** A paste card where the drop zone
   would be, with the strip preview showing the pasted URL with the tracking
   parameters struck through next to what will be stored; a "New links"

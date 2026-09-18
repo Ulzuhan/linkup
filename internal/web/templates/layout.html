@@ -94,10 +94,10 @@
       </a>
       <div class="hdr-actions">
         {{if .User.Username}}
+          {{/* Settings lives in the account menu; the header only carries the
+               way back from it. */}}
           {{if eq .Nav "settings"}}
             <a href="/" class="btn btn-ghost btn-sm"><svg aria-hidden="true"><use href="#i-arrow-left"/></svg>Links</a>
-          {{else}}
-            <a href="/settings" class="btn btn-ghost btn-sm" {{if eq .Nav "settings"}}aria-current="page"{{end}}><svg aria-hidden="true"><use href="#i-settings"/></svg><span class="hide-sm">Settings</span></a>
           {{end}}
           <details class="menu-root" id="account-menu">
             <summary class="menu-trigger" aria-label="Account" aria-haspopup="menu">

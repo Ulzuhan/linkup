@@ -28,8 +28,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
   destination, the clicks, the rules, the actions, and a ring that shows
   how much of the click budget or the lifetime is left. Folder chips and a
   search box (`/` focuses it) sit above the list; tags are clickable filters.
-- **Settings has a home.** It is reached from the header and the account
-  menu, and it now carries an Appearance section (light, dark or system)
+- **Settings has a home.** It is reached from the account menu, and it now
+  carries an Appearance section (light, dark or system)
   alongside API keys, domains, webhooks and import/export, each as a card.
 - Folders get a dialog with a name and a colour instead of `prompt()`; every
   destructive action asks in a dialog instead of `confirm()`. The CSV import

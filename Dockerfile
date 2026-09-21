@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # ==============================================================================
 # Production Runtime Stage (Hardened, Non-Root, Minimal)
 # ==============================================================================
-FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+FROM alpine:3.21@sha256:ce64758a109eb420d874a118f87920e625e12d3634e03b4a5573fd9f6e5d3507
 
 # The base image is pinned by digest for reproducibility, so a security fix
 # published after that digest was cut is not in it. Upgrading the packages

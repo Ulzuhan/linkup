@@ -5,6 +5,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-25
+
 ### Changed
 
 - **The interface is the family's now.** The dashboard, the front page and
@@ -55,6 +57,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
   synced from the kaicorplabs repository. The house look is now in LinkUp's
   own stylesheet, ported from DocDrop; a future `sync-theme.sh` run would
   copy the two files back and nothing would reference them.
+
 ### Fixed
 
 - The runtime image upgrades its Alpine packages at build time. The base is

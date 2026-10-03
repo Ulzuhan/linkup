@@ -78,6 +78,34 @@ func setupTestServer(t *testing.T) (http.Handler, *services.LinkService, *servic
 	return router, linkService, authService, cleanup
 }
 
+// A burst of deferred click recordings cannot restore an owner-paused link.
+// Check both the cached and database paths after each successful owner update.
+func TestPauseSurvivesPendingClickRecordings(t *testing.T) {
+	router, svc, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	for round := 0; round < 20; round++ {
+		link, _, err := svc.Create(models.CreateLinkRequest{URL: "https://example.com/paused", CustomSlug: fmt.Sprintf("pause-race-%d", round)}, "owner")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 30; i++ {
+			svc.RecordClick(link.ID, "", link.Slug, "")
+		}
+		active := false
+		if _, err := svc.Update(link.ID, models.UpdateLinkRequest{IsActive: &active}, "owner", false); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 30; i++ {
+			req := httptest.NewRequest(http.MethodGet, "/"+link.Slug, nil)
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+			if rr.Code != http.StatusGone {
+				t.Fatalf("round %d request %d: got %d, want 410", round, i, rr.Code)
+			}
+		}
+	}
+}
+
 func TestHealthCheck(t *testing.T) {
 	router, _, _, cleanup := setupTestServer(t)
 	defer cleanup()

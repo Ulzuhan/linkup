@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/database"
@@ -39,6 +40,9 @@ var (
 )
 
 type LinkService struct {
+	// Keep database reads and cache publication ordered with owner mutations.
+	// A click must never republish the snapshot it read before a pause/delete.
+	stateMu  sync.RWMutex
 	db       *database.DB
 	cache    *LinkCache
 	webhooks *WebhookService
@@ -56,6 +60,8 @@ func NewLinkService(db *database.DB, cache *LinkCache, webhooks *WebhookService,
 
 // Create creates a new shortened link with cleaned target URL and smart routing
 func (s *LinkService) Create(req models.CreateLinkRequest, createdBy string) (*models.Link, []string, error) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	// 1. Clean and sanitize URL
 	cleanTarget, strippedParams, err := CleanURL(req.URL, s.ownHost)
 	if err != nil {
@@ -204,6 +210,8 @@ func (s *LinkService) Create(req models.CreateLinkRequest, createdBy string) (*m
 
 // Resolve retrieves and validates a link by domain and slug
 func (s *LinkService) Resolve(domain, slug string) (*models.Link, error) {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
 	// Try cache first
 	if cached, ok := s.cache.Get(domain, slug); ok {
 		if cached.IsExpired() {
@@ -236,6 +244,8 @@ func (s *LinkService) Resolve(domain, slug string) (*models.Link, error) {
 // RecordClick increments click counter and records variant hits asynchronously
 func (s *LinkService) RecordClick(linkID, domain, slug, variantName string) {
 	go func() {
+		s.stateMu.Lock()
+		defer s.stateMu.Unlock()
 		now := time.Now().Unix()
 		query := `UPDATE links SET click_count = click_count + 1, last_clicked_at = ? WHERE id = ?`
 		_, _ = s.db.Exec(query, now, linkID)
@@ -326,6 +336,8 @@ func (s *LinkService) ListByUser(username string, isAdmin bool) ([]models.Link, 
 }
 
 func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username string, isAdmin bool) (*models.Link, error) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	link, err := s.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -474,6 +486,8 @@ func (s *LinkService) Update(id string, req models.UpdateLinkRequest, username s
 }
 
 func (s *LinkService) Delete(id, username string, isAdmin bool) error {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	link, err := s.GetByID(id)
 	if err != nil {
 		return err

@@ -58,7 +58,9 @@ Trivy v0.75.0 policy, loads its exact config ID and tests corrected key routes, 
 current synthetic SQLite, with the old automatic pair explicitly blocked. Source/digest and the archive are retained for seven
 days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
 publisher gets registry/signing permissions after these gates; it copies the
-same bytes, verifies the signed source/tag and promotes without rebuilding.
+same bytes, verifies signed source/tag/run/attempt and promotes only the reviewed
+version without rebuilding or moving floating aliases. The bootstrap manifest
+remains disabled; synthetic publisher tests never authorize real publication.
 
 The rehearsal uses CI-only `python3-cryptography` from the runner's distribution
 to generate synthetic AES-GCM cookies matching the existing Go format; it adds
@@ -75,8 +77,9 @@ it explicitly does not approve performance or production promotion.
 `scripts/publish-scanned-image.sh --verify-only` validates a prepared layout
 and tags without contacting the registry. Set `RELEASE_LAYOUT`,
 `RELEASE_DIGEST`, `RELEASE_REPOSITORY` and newline-separated `RELEASE_TAGS`.
-Publishing without that flag requires an existing Docker login configuration;
-never pass registry tokens in command arguments.
+Direct publication through that helper is disabled. The canonical publisher is
+`oci-release.py`, gated by the reviewed bootstrap manifest. Never pass registry
+tokens in command arguments.
 
 ### Code and review
 

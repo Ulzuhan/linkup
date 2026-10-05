@@ -14,7 +14,7 @@ link owners/slugs, Unix seconds and session encryption format are unchanged.
 
 New OIDC keys created by `/api/keys` or `/settings/keys` receive a server-generated
 `oidc-subject-v2:` ID and retain the verified subject as `user_id`. Authorization
-looks up only that subject's live login, checks UserInfo and current access,
+looks up only that subject's unexpired login, checks UserInfo and the available group projection,
 then revalidates the exact key ID/hash/owner and session after the provider
 request. Group membership never elevates a key to group administrator. The
 historical login migration cannot reassign typed keys to a matching mutable name.
@@ -54,8 +54,20 @@ and its router-only health response lacks the SQLite marker. Exact-image CI
 proves these incompatibilities, real new-key routes, SQLite failures and current
 synthetic data preservation. It does not call that old pair compatible.
 
-Publication is explicitly blocked by `persistence-policy.py --publication`,
-both before registry login in the workflow and before candidate/promote copy.
+`bootstrap-policy.json` is a separately reviewed manifest. It currently has
+`publication_authorized=false`, `version=null`, `automatic_return=false` and
+`floating_tags=false`. Publication is blocked by
+`persistence-policy.py --publication` before registry login and before
+candidate/promote registry access. CLI flags and environment cannot enable it.
+Future authorization must name one stable version greater than0.8.0, match
+package/lock versions and an exact canonical tag-push context. This is a
+supervised first-publication lane, not a compatible automatic return lane.
+The OCI declares `deployment-lane=supervised-bootstrap-v1` and
+`automatic-return=false`; it must have no `rollback-image` label. Changing those
+labels requires a new OCI build and rehearsal. The publisher copies that exact
+tested index to a unique run/attempt candidate, verifies its signed source/tag,
+certificate run/attempt and subject/digest, then copies only the version tag.
+It never moves `0.8`, `0` or `latest`. The old shell helper is verification-only.
 The infra wrapper likewise blocks adoption/apply/reconcile/rollback until a
 corrected signed baseline and supervised bootstrap are separately reviewed.
 Testing two unpublished corrected OCI artifacts can prove isolated image return;
@@ -69,14 +81,23 @@ revived deleted auth. Data restore is always an explicit manual recovery,
 never part of automatic image rollback. Async clicks/webhooks and downtime
 remain outside the guarantee;0.8.0 also lacks the current cache locking fix.
 
-## Corrected pair rehearsal
+## Permission projection and bootstrap rehearsal
 
-The isolated Compose gate uses two distinct successful CI artifacts with the
-same reviewed Go bytes and different source/config IDs. It exercises API key
-creation/use/revocation, current-data return, rejected health after writes,
-interrupted journal recovery and SQLite failure before stop. The staged OCI
-labels still name the historical signed negative-control baseline. The fixture
-explicitly demonstrates that production image policy rejects admitting that
-staged pair, then models corrected-pair admission only for lifecycle tests.
-A real fixed baseline, actual compatible-pair labels/signatures and supervised
-bootstrap still need separate review and authorization.
+The synthetic Go callback fixture explicitly covers bare UserInfo and empty
+groups with the same signed JWT: access and cookie administration continue
+using the JWT's old groups until the provider rejects the token or the local
+session expires/is revoked. A fresh non-empty group list without the required
+group denies access. API keys do not gain group administration in either case.
+This bounds current behavior; consulting UserInfo alone does not prove fresh
+group membership. Supabase Auth v2.197.0 checks JWT/user/session for UserInfo,
+but does not check revoked consent in that route. The deployed account admin
+path revokes consent without deleting provider sessions. Real permission-change
+tests or a reviewed projection change are prerequisites for stronger guarantees.
+
+The infra first-jump rehearsal uses the signed historical B0 as origin and this
+exact unpublished OCI as B1. B0 cannot be last-good for typed keys/readiness.
+The supervised controller journals forward-only recovery and preserves current
+SQLite; failures do not activate B0 or restore a backup. Unpublished B1 admission
+is an explicit fixture. Publication, live cutover, real key reissue and eventual
+handoff to a signed B1 baseline each require their own reviewed evidence.
+Later automatic image updates still need a real compatible signed pair.

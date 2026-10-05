@@ -30,6 +30,13 @@ runs:
     - name: Block production Go and persistence changes pending manual review
       shell: bash
       run: python3 scripts/persistence-policy.py
+    - id: bootstrap
+      name: Derive the closed supervised bootstrap contract
+      shell: bash
+      run: |
+        echo 'labels<<LINKUP_BOOTSTRAP_LABELS' >> "$GITHUB_OUTPUT"
+        python3 scripts/persistence-policy.py --labels >> "$GITHUB_OUTPUT"
+        echo 'LINKUP_BOOTSTRAP_LABELS' >> "$GITHUB_OUTPUT"
     - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
     - id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -45,7 +52,7 @@ runs:
           io.kaicorp.linkup.data-action=image-only
           io.kaicorp.linkup.auth-contract=oidc-subject-v2
           io.kaicorp.linkup.readiness-contract=sqlite-ro-v1
-          io.kaicorp.linkup.rollback-image=${{ steps.rollback.outputs.image }}
+          ${{ steps.bootstrap.outputs.labels }}
         provenance: mode=max
         sbom: true
         cache-from: type=gha

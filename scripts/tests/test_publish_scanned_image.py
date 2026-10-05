@@ -60,21 +60,15 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), DIGEST)
         self.assertEqual([c[0] for c in calls], ["inspect"])
 
-    def test_same_layout_and_digest_for_every_tag(self):
+    def test_direct_publication_is_disabled_before_inspection_or_credentials(self):
         result, calls = self.run_publish()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), DIGEST)
-        self.assertEqual([c[0] for c in calls], ["inspect", "copy", "copy"])
-        for call, tag in zip(calls[1:], self.env["RELEASE_TAGS"].splitlines()):
-            self.assertIn("--all", call)
-            self.assertIn("--preserve-digests", call)
-            self.assertEqual(call[-2:], ["oci:" + self.env["RELEASE_LAYOUT"], "docker://" + tag])
-            self.assertNotIn("--dest-creds", call)
-        self.assertEqual(list(self.base.glob("linkup-publish-digest.*")), [])
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("Direct publication disabled", result.stderr)
+        self.assertEqual(calls, [])
 
     def test_mismatch_never_publishes(self):
         self.env["RELEASE_DIGEST"] = "sha256:" + "0" * 64
-        result, calls = self.run_publish()
+        result, calls = self.run_publish("--verify-only")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual([c[0] for c in calls], ["inspect"])
 
@@ -82,27 +76,22 @@ class PublishTests(unittest.TestCase):
         for tags in ("ghcr.io/another/linkup:latest", "ghcr.io/example/linkup:bad tag", "--creds=secret"):
             with self.subTest(tags=tags):
                 self.env["RELEASE_TAGS"] = tags
-                result, calls = self.run_publish()
+                result, calls = self.run_publish("--verify-only")
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(calls, [])
 
     def test_failed_inspection_stops_publication(self):
         self.env["TEST_INSPECT_FAIL"] = "1"
-        result, calls = self.run_publish()
+        result, calls = self.run_publish("--verify-only")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual([c[0] for c in calls], ["inspect"])
 
-    def test_failed_copy_stops_remaining_tags(self):
-        self.env["TEST_COPY_FAIL"] = "1"
-        result, calls = self.run_publish()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual([c[0] for c in calls], ["inspect", "copy"])
-
-    def test_changed_destination_digest_stops_remaining_tags(self):
-        self.env["TEST_COPY_DIGEST"] = "sha256:" + "1" * 64
-        result, calls = self.run_publish()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual([c[0] for c in calls], ["inspect", "copy"])
+    def test_arguments_and_environment_cannot_override_direct_guard(self):
+        self.env['BOOTSTRAP_PUBLICATION_AUTHORIZED']='true'
+        for args in (('--publish',),('--verify-only','--publish')):
+            result,calls=self.run_publish(*args)
+            self.assertEqual(result.returncode,2)
+            self.assertEqual(calls,[])
 
 
 if __name__ == "__main__":

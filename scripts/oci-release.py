@@ -17,6 +17,9 @@ SPEC = importlib.util.spec_from_file_location("rollback_baseline", Path(__file__
 rollback_baseline = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(rollback_baseline)
 ROLLBACK = rollback_baseline.image()
+POLICY_SPEC = importlib.util.spec_from_file_location("persistence_policy", Path(__file__).with_name("persistence-policy.py"))
+policy = importlib.util.module_from_spec(POLICY_SPEC)
+POLICY_SPEC.loader.exec_module(policy)
 
 
 class Refused(RuntimeError):
@@ -81,7 +84,8 @@ def verify(layout, expected, source):
             or labels.get("io.kaicorp.linkup.data-action") != "image-only"
             or labels.get("io.kaicorp.linkup.auth-contract") != "oidc-subject-v2"
             or labels.get("io.kaicorp.linkup.readiness-contract") != "sqlite-ro-v1"
-            or labels.get("io.kaicorp.linkup.rollback-image") != ROLLBACK):
+            or "io.kaicorp.linkup.rollback-image" in labels
+            or any(labels.get(name)!=value for name,value in policy.BOOTSTRAP_LABELS.items())):
         raise Refused("runtime provenance/rollback contract labels differ")
     return image_id
 
@@ -98,12 +102,34 @@ def copy(layout, expected, tag):
             raise Refused("registry copy changed the gated digest")
 
 
-def publication_context():
-    match = re.fullmatch(r"refs/tags/v(0\.8\.\d+)", os.environ.get("GITHUB_REF", ""))
+def publication_context(source=None):
+    match = re.fullmatch(r"refs/tags/v(0\.8\.[1-9][0-9]*)", os.environ.get("GITHUB_REF", ""))
     if (not match or os.environ.get("GITHUB_EVENT_NAME") != "push"
             or os.environ.get("GITHUB_REPOSITORY") != "Ulzuhan/linkup"):
         raise Refused("publication only from a stable tag push in Ulzuhan/linkup")
+    if source is not None and os.environ.get("GITHUB_SHA") != source:
+        raise Refused("publisher source differs from the exact gated tag SHA")
     return match[1]
+
+
+def verify_publication_signature(expected, source, version):
+    run_id, attempt = os.environ.get("GITHUB_RUN_ID", ""), os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if not re.fullmatch(r"[1-9][0-9]*", run_id) or not re.fullmatch(r"[1-9][0-9]*", attempt):
+        raise Refused("exact publisher run/attempt required")
+    verified = json.loads(command("gh", "attestation", "verify", "oci://" + REPOSITORY + "@" + expected,
+                                 "--repo", "Ulzuhan/linkup", "--signer-workflow", "Ulzuhan/linkup/.github/workflows/release.yml",
+                                 "--source-digest", source, "--source-ref", "refs/tags/v" + version,
+                                 "--deny-self-hosted-runners", "--format", "json"))
+    invocation = f"https://github.com/Ulzuhan/linkup/actions/runs/{run_id}/attempts/{attempt}"
+    for entry in verified:
+        result = entry.get("verificationResult", {})
+        certificate = result.get("signature", {}).get("certificate", {})
+        if (certificate.get("runInvocationURI") == invocation
+                and certificate.get("sourceRepositoryDigest") == source
+                and any(subject.get("name") == REPOSITORY and subject.get("digest", {}).get("sha256") == expected.split(":")[1]
+                        for subject in result.get("statement", {}).get("subject", []))):
+            return
+    raise Refused("signature is not the exact publisher source/run/attempt/digest")
 
 
 def immutable_version(version, expected):
@@ -135,7 +161,7 @@ def main():
         if loaded != image_id:
             raise Refused(f"loaded runtime {loaded} differs from gated OCI config {image_id}")
     elif args.action in ("candidate", "promote"):
-        version = publication_context()
+        version = publication_context(args.source)
         command(sys.executable, str(Path(__file__).with_name("persistence-policy.py")), "--publication")
         immutable_version(version, args.digest)
         if args.action == "candidate":
@@ -145,10 +171,8 @@ def main():
                 raise Refused("unique run/attempt required")
             copy(args.layout, args.digest, f"candidate-{run_id}-{attempt}")
         else:
-            major, minor, _ = version.split(".")
-            # Caller invokes promotion only after signed provenance verifies.
-            for tag in (version, f"{major}.{minor}", major, "latest"):
-                copy(args.layout, args.digest, tag)
+            verify_publication_signature(args.digest, args.source, version)
+            copy(args.layout, args.digest, version)
     print(image_id)
 
 

@@ -7,6 +7,8 @@ import tempfile
 import unittest
 import subprocess
 import sys
+import json,os,copy
+from unittest.mock import patch
 ROOT = Path(__file__).parents[2]
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -46,4 +48,26 @@ class PersistenceTests(unittest.TestCase):
     def test_publication_is_blocked_until_signed_fixed_bootstrap(self):
         result=subprocess.run([sys.executable,str(ROOT/"scripts/persistence-policy.py"),"--publication"],capture_output=True,text=True)
         self.assertNotEqual(result.returncode,0)
-        self.assertIn("fixed signed",result.stderr)
+        self.assertIn("not authorized",result.stderr)
+
+    def test_bootstrap_requires_reviewed_manifest_not_flags_or_environment(self):
+        with patch.dict(os.environ,{'BOOTSTRAP_PUBLICATION_AUTHORIZED':'true','GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'},clear=True):
+            with self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()
+
+    def test_exact_reviewed_version_package_and_lock_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'release').mkdir()
+            data=policy.bootstrap_policy();data.update(publication_authorized=True,version='0.8.101')
+            manifest=root/'release/bootstrap-policy.json';manifest.write_text(json.dumps(data))
+            (root/'package.json').write_text(json.dumps({'version':'0.8.101'}))
+            (root/'package-lock.json').write_text(json.dumps({'version':'0.8.101','packages':{'':{'version':'0.8.101'}}}))
+            good={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
+            with patch.object(policy,'verify'),patch.dict(os.environ,good,clear=True):
+                self.assertEqual(policy.publication(root),'0.8.101')
+                with patch.dict(os.environ,{'GITHUB_REF':'refs/tags/v0.8.102'}):
+                    with self.assertRaises(ValueError):policy.publication(root)
+                (root/'package-lock.json').write_text(json.dumps({'version':'0.8.101','packages':{'':{'version':'0.8.100'}}}))
+                with self.assertRaises(ValueError):policy.publication(root)
+            for change in ({'automatic_return':True},{'floating_tags':True},{'schema':True},{'publication_authorized':'true'},{'version':None},{'version':'0.8.0'},{'version':'0.8.1-rc.1'},{'version':0.81},{'unexpected':True}):
+                manifest.write_text(json.dumps(dict(data,**change)))
+                with self.subTest(change=change),self.assertRaises(ValueError):policy.bootstrap_policy(root)

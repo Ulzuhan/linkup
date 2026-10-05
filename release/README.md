@@ -38,6 +38,11 @@ updated targets, new slugs, pauses/deletions, counters and deleted session/key
 rows survive the return to the exact previous image over the **current database**.
 Synthetic encrypted cookies and keys work before deletion and remain rejected
 after return. OIDC discovery/login/PKCE are checked against a disposable provider.
+The accepted key fixture uses the existing legacy username-key path. The current
+and historical authorization code rejects a subject-key when its subject differs
+from the stored login name: its proof retains the subject as `Username`. This
+existing application limitation is recorded, not fixed by deployment preparation;
+the fixture does not prove that every newly created OIDC key works.
 
 A negative control restores the older copy only into a new isolated target:
 new writes disappear and formerly deleted cookies/keys become usable again.

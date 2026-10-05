@@ -197,7 +197,10 @@ def main():
             now = int(time.time())
             auth = credentials(now)
             db.execute("INSERT INTO oidc_sessions VALUES(?,?,?,?,?,?)", ("revoked", "dev-user-id", "sid", "dev-user", auth["access_token"], now + 3600))
-            db.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?)", ("deleted-key", "dev-user-id", "key", "prefix", auth["key_hash"], None, now))
+            # Exercise the existing legacy username-key path. Subject-key proof
+            # currently compares that subject to the stored login name; when
+            # they differ it rejects the key in both historical/current Go.
+            db.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?)", ("deleted-key", "dev-user", "key", "prefix", auth["key_hash"], None, now))
             db.execute("INSERT INTO webhooks VALUES(?,?,?,?,?,?,?)", ("webhook", "sub", "https://example.org/hook", "synthetic", "link.created", 0, now))
             db.commit();integrity(db);schema(db);inventory(data)
             source = sqlite3.connect("file:" + str(data / "linkup.db") + "?mode=ro", uri=True)

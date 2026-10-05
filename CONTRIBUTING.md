@@ -54,8 +54,8 @@ must keep the external test IdP and load generator fixed.
 
 The tag workflow calls functional CI at the exact release SHA. CI calls
 `.github/actions/scanned-oci` once, scans the OCI layout with the existing
-Trivy v0.75.0 policy, loads its exact config ID and tests the image return over
-current synthetic SQLite. Source/digest and the archive are retained for seven
+Trivy v0.75.0 policy, loads its exact config ID and tests corrected key routes, SQLite readiness and historical data return over
+current synthetic SQLite, with the old automatic pair explicitly blocked. Source/digest and the archive are retained for seven
 days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
 publisher gets registry/signing permissions after these gates; it copies the
 same bytes, verifies the signed source/tag and promotes without rebuilding.

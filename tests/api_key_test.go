@@ -50,7 +50,7 @@ func TestAPIKeyAuthentication(t *testing.T) {
 	renderer, _ := web.NewRenderer()
 
 	router := handlers.NewRouter(
-		cfg,
+		cfg, db,
 		linkService,
 		domainService,
 		folderService,

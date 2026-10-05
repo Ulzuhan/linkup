@@ -5,6 +5,8 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+import subprocess
+import sys
 ROOT = Path(__file__).parents[2]
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -40,3 +42,8 @@ class PersistenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):rehearsal.inventory(root)
             (root/"asset.png").unlink();(root/"unexpected").symlink_to(root/"missing")
             with self.assertRaises(ValueError):rehearsal.inventory(root)
+
+    def test_publication_is_blocked_until_signed_fixed_bootstrap(self):
+        result=subprocess.run([sys.executable,str(ROOT/"scripts/persistence-policy.py"),"--publication"],capture_output=True,text=True)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn("fixed signed",result.stderr)

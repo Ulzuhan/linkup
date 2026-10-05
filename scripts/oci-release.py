@@ -79,6 +79,8 @@ def verify(layout, expected, source):
             or labels.get("org.opencontainers.image.revision") != source
             or labels.get("io.kaicorp.linkup.store-contract") != "linkup-sqlite-v1"
             or labels.get("io.kaicorp.linkup.data-action") != "image-only"
+            or labels.get("io.kaicorp.linkup.auth-contract") != "oidc-subject-v2"
+            or labels.get("io.kaicorp.linkup.readiness-contract") != "sqlite-ro-v1"
             or labels.get("io.kaicorp.linkup.rollback-image") != ROLLBACK):
         raise Refused("runtime provenance/rollback contract labels differ")
     return image_id
@@ -134,6 +136,7 @@ def main():
             raise Refused(f"loaded runtime {loaded} differs from gated OCI config {image_id}")
     elif args.action in ("candidate", "promote"):
         version = publication_context()
+        command(sys.executable, str(Path(__file__).with_name("persistence-policy.py")), "--publication")
         immutable_version(version, args.digest)
         if args.action == "candidate":
             run_id = os.environ.get("GITHUB_RUN_ID", "")

@@ -241,7 +241,9 @@ func (a *AuthService) adoptLegacyOwner(ctx context.Context, session *models.User
 			`UPDATE links SET created_by = ? WHERE created_by = ?`,
 			`UPDATE folders SET created_by = ? WHERE created_by = ?`,
 			`UPDATE custom_domains SET created_by = ? WHERE created_by = ?`,
-			`UPDATE api_keys SET user_id = ? WHERE user_id = ?`,
+			// Typed keys already have immutable subject ownership. A later
+			// person's login name can equal that subject and must not adopt it.
+			`UPDATE api_keys SET user_id = ? WHERE user_id = ? AND id NOT LIKE 'oidc-subject-v2:%'`,
 			`UPDATE webhooks SET user_id = ? WHERE user_id = ?`,
 		} {
 			res, err := a.db.ExecContext(ctx, q, session.UserID, old)

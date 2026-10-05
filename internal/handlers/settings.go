@@ -102,7 +102,11 @@ func (h *SettingsHandler) CreateAPIKeyForm(w http.ResponseWriter, r *http.Reques
 	_ = r.ParseForm()
 	name := strings.TrimSpace(r.FormValue("name"))
 
-	_, secret, err := h.apiKeyService.Create(name, session.UserID)
+	create := h.apiKeyService.Create
+	if h.cfg.IsOIDCConfigured() {
+		create = h.apiKeyService.CreateOIDC
+	}
+	_, secret, err := create(name, session.UserID)
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/settings?error=%s", err.Error()), http.StatusSeeOther)
 		return

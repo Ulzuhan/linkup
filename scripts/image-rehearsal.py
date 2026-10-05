@@ -22,6 +22,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 SYNTHETIC_SECRET = "synthetic-only-" * 3
+LEGACY_IMAGE = None
 
 
 def command(*args):
@@ -104,7 +105,9 @@ def serve(image, data, oidc=None):
         while True:
             try:
                 status, body, _ = request(base, "/healthz")
-                assert status == 200 and json.loads(body) == {"status": "healthy", "service": "linkup"}
+                expected = {"status": "healthy", "service": "linkup"}
+                if image != LEGACY_IMAGE: expected["sqlite"] = "ready"
+                assert status == 200 and json.loads(body) == expected
                 break
             except (OSError, AssertionError):
                 if time.monotonic() >= deadline:
@@ -139,10 +142,10 @@ def credentials(now):
                                  "session_id": "revoked", "is_admin": False, "created_at": now}).encode())
     api_key = "lk_live_" + os.urandom(24).hex()
     return {"cookie": cookie, "access_token": encrypt(b"synthetic-access"), "api_key": api_key,
-            "key_hash": hashlib.sha256(api_key.encode()).hexdigest()}
+            "key_hash": hashlib.sha256(api_key.encode()).hexdigest(), "key_id":"oidc-subject-v2:synthetic-fixture"}
 
 
-def oidc_smoke(image, data, auth, expected):
+def oidc_smoke(image, data, auth, expected, key_expected=None, exercise=False):
     issuer = "https://id.example.invalid/auth/v1"
     class Provider(http.server.BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -174,7 +177,31 @@ def oidc_smoke(image, data, auth, expected):
             assert len(query["state"]) == len(query["code_challenge"]) == 1 and query["state"][0] and query["code_challenge"][0]
             assert query["redirect_uri"] == ["https://link.example.invalid/auth/callback"]
             assert request(base, "/api/links", headers={"Cookie": "linkup_session=" + auth["cookie"]})[0] == expected
-            assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["api_key"]})[0] == expected
+            assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["api_key"]})[0] == (expected if key_expected is None else key_expected)
+            if "route_key" in auth:
+                assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["route_key"]})[0] == (expected if key_expected is None else key_expected)
+            if exercise:
+                cookie = {"Cookie": "linkup_session=" + auth["cookie"]}
+                status, body, _ = request(base, "/api/keys", "POST", {"name":"actual route"}, cookie)
+                assert status == 201
+                created = json.loads(body);assert created["api_key"]["user_id"] == "dev-user-id"
+                key = {"Authorization":"Bearer " + created["secret"]}
+                status, body, _ = request(base, "/api/links", "POST", {"url":"https://example.org/key","custom_slug":"real-key-link"}, key)
+                assert status == 201 and json.loads(body)["link"]["created_by"] == "dev-user-id"
+                assert request(base, "/api/keys/" + created["api_key"]["id"], "DELETE", headers=cookie)[0] == 200
+                assert request(base, "/api/links", headers=key)[0] == 401
+                status, body, _ = request(base, "/api/keys", "POST", {"name":"return compatibility"}, cookie)
+                assert status == 201
+                auth["route_key"] = json.loads(body)["secret"]
+                assert request(base, "/api/links", headers={"Authorization":"Bearer " + auth["route_key"]})[0] == 200
+                # Removing/restoring the pathname does not change user rows.
+                live = data / "linkup.db";missing = data / "probe-missing.db"
+                live.rename(missing)
+                try:
+                    assert request(base,"/healthz")[0] == 503 and request(base,"/health")[0] == 200
+                    assert not live.exists()
+                finally: missing.rename(live)
+                assert request(base,"/healthz")[0] == 200
     finally:
         provider.shutdown();provider.server_close();thread.join(timeout=2)
 
@@ -184,6 +211,8 @@ def main():
     parser.add_argument("--candidate", required=True)
     parser.add_argument("--baseline", required=True)
     args = parser.parse_args()
+    global LEGACY_IMAGE
+    LEGACY_IMAGE = args.baseline
     command("docker", "pull", args.baseline)
     with tempfile.TemporaryDirectory(prefix="linkup-image-") as tmp:
         root = Path(tmp);root.chmod(0o755);data = root / "data";data.mkdir(mode=0o777);data.chmod(0o777)
@@ -197,9 +226,8 @@ def main():
             now = int(time.time())
             auth = credentials(now)
             db.execute("INSERT INTO oidc_sessions VALUES(?,?,?,?,?,?)", ("revoked", "dev-user-id", "sid", "dev-user", auth["access_token"], now + 3600))
-            # Exercise the existing legacy username-key path. Subject-key proof
-            # currently compares that subject to the stored login name; when
-            # they differ it rejects the key in both historical/current Go.
+            # Historical compatibility fixture; new images reject untyped OIDC
+            # credentials until reissued from the verified cookie.
             db.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?)", ("deleted-key", "dev-user", "key", "prefix", auth["key_hash"], None, now))
             db.execute("INSERT INTO webhooks VALUES(?,?,?,?,?,?,?)", ("webhook", "sub", "https://example.org/hook", "synthetic", "link.created", 0, now))
             db.commit();integrity(db);schema(db);inventory(data)
@@ -209,7 +237,13 @@ def main():
             assert backup.execute("SELECT click_count FROM links WHERE id=?", (ids["printed"],)).fetchone() == (1,)
             backup.close();source.close();db.close()
         oidc_smoke(args.baseline, data, auth, 200)
+        oidc_smoke(args.candidate, data, auth, 200, key_expected=401, exercise=True)
+        # Primary credentials now come from POST /api/keys, not seeded hashes.
+        auth["legacy_api_key"] = auth["api_key"]
+        auth["api_key"] = auth["route_key"]
         oidc_smoke(args.candidate, data, auth, 200)
+        # Old data format survives, but subject keys and readiness do not.
+        oidc_smoke(args.baseline, data, auth, 200, key_expected=401)
         with serve(args.candidate, data) as base:
             assert request(base, "/printed")[0] == 302
             update(base, ids["printed"], target_url="https://example.org/after")
@@ -257,8 +291,9 @@ def main():
             old = sqlite3.connect("file:" + str(root / "backup.db") + "?mode=ro", uri=True)
             restored = sqlite3.connect(target / "linkup.db");old.backup(restored);restored.close();old.close()
             (target / "linkup.db").chmod(0o666)
-            oidc_smoke(args.baseline, target, auth, 200)
-        print("PASS: exact baseline -> candidate -> same baseline over current SQLite, one app writer at a time")
+            oidc_smoke(args.baseline, target, {**{k:v for k,v in auth.items() if k != "route_key"}, "api_key":auth["legacy_api_key"]}, 200)
+        print("PASS: exact fixed runtime restart and historical data return over current SQLite, one app writer at a time")
+        print("PROVEN LIMIT: 0.8.0 rejects subject keys and has no SQLite marker; automatic return/publication blocked")
         print("PASS: API writes, slugs/owners/seconds, pause/delete, budgets, logout replay IDs and key/session deletions preserved")
         print("PASS: WAL-consistent backup and separate restore integrity/schema; OIDC discovery/login/PKCE smoke")
         print("PROVEN LIMIT: stale restore loses new writes and revives deleted session/key; manual data restore only")

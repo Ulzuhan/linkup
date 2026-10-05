@@ -59,7 +59,7 @@ func setupPublicServerWithLinks(t *testing.T) (http.Handler, *services.LinkServi
 		"AssetVersion": web.AssetVersion(),
 	})
 	router := handlers.NewRouter(
-		cfg, linkService, services.NewDomainService(db), services.NewFolderService(db),
+		cfg, db, linkService, services.NewDomainService(db), services.NewFolderService(db),
 		services.NewAPIKeyService(db, func(string) bool { return false }),
 		webhooks, services.NewCSVService(linkService), services.NewRouterEngine(),
 		services.NewAuthService(cfg), renderer,

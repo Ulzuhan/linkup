@@ -213,3 +213,13 @@ The prospective 0.8.x lane and its exact signed baseline are documented in
 [release/README.md](release/README.md). It requires functional CI at the same
 source SHA, the tested/scanned OCI and a return rehearsal over current SQLite.
 Preparing this lane does not activate a deployment or authorize a release.
+
+## Corrected readiness and OIDC keys (draft)
+
+`/health` is HTTP liveness; `/healthz` checks SQLite metadata and required columns
+using a fresh read-only connection and returns a generic503 on failure. It does
+not test write access, free disk or full integrity. Existing healthcheck paths
+remain valid. Historical OIDC API keys need reissue from a verified login because
+the old rows cannot safely distinguish subject from a mutable login name.
+Automatic bootstrap/publication is blocked until a corrected signed baseline
+is reviewed; see [the exact contract and limits](release/README.md).

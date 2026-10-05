@@ -14,5 +14,8 @@ copies the tested bytes without rebuilding. Tags/releases/publication and live
 deployment require explicit authorization; preparation and CI are not activation.
 
 Use isolated branches and synthetic databases for tests. Preserve concurrent
-work and the original checkout. Do not change Go dependencies, application
-behavior, UI or production configuration as part of deployment preparation.
+work and the original checkout. The separately authorized auth/readiness correction changes Go behavior and the
+reviewed hash policy in these drafts: typed subject keys, read-only SQLite
+readiness and a blocked historical bootstrap. Do not change dependencies, UI,
+production Compose, publish or activate. Historical untyped OIDC keys need
+reissue; never normalize a bearer owner using mutable login aliases.

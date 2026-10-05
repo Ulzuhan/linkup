@@ -43,6 +43,8 @@ runs:
           org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
           io.kaicorp.linkup.store-contract=linkup-sqlite-v1
           io.kaicorp.linkup.data-action=image-only
+          io.kaicorp.linkup.auth-contract=oidc-subject-v2
+          io.kaicorp.linkup.readiness-contract=sqlite-ro-v1
           io.kaicorp.linkup.rollback-image=${{ steps.rollback.outputs.image }}
         provenance: mode=max
         sbom: true
@@ -72,7 +74,7 @@ runs:
       run: |
         image_id=$(python3 scripts/oci-release.py load --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
         echo "LINKUP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
-    - name: Exact signed baseline -> gated runtime -> same baseline over current SQLite
+    - name: Exact fixed runtime, real key routes, SQLite readiness and historical negative return
       shell: bash
       run: sudo python3 scripts/image-rehearsal.py --candidate "$LINKUP_TEST_IMAGE" --baseline '${{ steps.rollback.outputs.image }}'
     - name: Default runtime identity is uid 10001

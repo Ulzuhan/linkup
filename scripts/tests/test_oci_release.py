@@ -23,7 +23,8 @@ class OCITests(unittest.TestCase):
         self.layout = Path(self.tmp.name)
         (self.layout / "blobs/sha256").mkdir(parents=True)
         labels = {"io.kaicorp.linkup.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
-                  "io.kaicorp.linkup.rollback-image": oci.ROLLBACK}
+                  "io.kaicorp.linkup.rollback-image": oci.ROLLBACK,
+                  "io.kaicorp.linkup.auth-contract": "oidc-subject-v2", "io.kaicorp.linkup.readiness-contract":"sqlite-ro-v1"}
         self.config = self.put({"architecture": "amd64", "os": "linux", "config": {"Labels": labels}})
         layer = self.put(b"synthetic layer")
         runtime = self.put({"config": self.config, "layers": [layer]})

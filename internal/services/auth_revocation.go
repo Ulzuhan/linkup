@@ -144,24 +144,41 @@ func (a *AuthService) authorizeSession(ctx context.Context, session *models.User
 	return nil
 }
 
-// AuthorizeAPIKey prevents a persistent key from bypassing OIDC group removal.
-// In OIDC mode it needs the owner's latest unexpired login, checked live. It
-// never promotes the key to group administrator. Standalone behavior is unchanged.
+// AuthorizeAPIKey requires a typed subject key and the owner's unexpired login.
+// Untyped historical keys cannot safely distinguish a username from a subject;
+// they need reissue from an authenticated cookie. No mutable-name fallback.
 func (a *AuthService) AuthorizeAPIKey(ctx context.Context, session *models.UserSession) error {
 	if !a.cfg.IsOIDCConfigured() {
 		return nil
 	}
-	if a.db == nil {
+	if a.db == nil || session == nil || session.UserID == "" || !strings.HasPrefix(session.APIKeyID, OIDCSubjectKeyPrefix) || session.APIKeyHash == "" {
 		return errAccessRevoked
 	}
-	// Keys created before 0.6.0 carry the login name in user_id; keys created
-	// since carry the OIDC subject. Either must find the owner's live login.
-	proof := &models.UserSession{Username: session.Username}
-	if err := a.db.QueryRowContext(ctx, `SELECT id, subject FROM oidc_sessions WHERE (subject = ? OR username = ?) AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, session.UserID, session.Username, time.Now().Unix()).
-		Scan(&proof.SessionID, &proof.UserID); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	owner := session.UserID
+	proof := &models.UserSession{}
+	if a.db.QueryRowContext(ctx, `SELECT id,subject,username FROM oidc_sessions WHERE subject = ? AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, owner, time.Now().Unix()).Scan(&proof.SessionID, &proof.UserID, &proof.Username) != nil {
 		return errAccessRevoked
 	}
-	return a.authorizeSession(ctx, proof)
+	if err := a.authorizeSession(ctx, proof); err != nil {
+		return err
+	}
+	// Recheck the exact key and login after UserInfo; another live key cannot
+	// stand in for one revoked during that external request.
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errAccessRevoked
+	}
+	defer tx.Rollback()
+	var present int
+	if tx.QueryRowContext(ctx, `SELECT 1 FROM oidc_sessions WHERE id = ? AND subject = ? AND username = ? AND expires_at > ?`, proof.SessionID, owner, proof.Username, time.Now().Unix()).Scan(&present) != nil || tx.QueryRowContext(ctx, `SELECT 1 FROM api_keys WHERE id = ? AND key_hash = ? AND user_id = ?`, session.APIKeyID, session.APIKeyHash, owner).Scan(&present) != nil || tx.Commit() != nil {
+		return errAccessRevoked
+	}
+	session.Username = proof.Username
+	// Preserve configured name-based administration; never elevate by groups.
+	session.IsAdmin = a.cfg.IsAdmin(proof.Username, nil)
+	return nil
 }
 
 // RevokeSession invalidates a copied cookie too, without depending on UserInfo.

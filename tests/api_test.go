@@ -58,7 +58,7 @@ func setupTestServer(t *testing.T) (http.Handler, *services.LinkService, *servic
 	}
 
 	router := handlers.NewRouter(
-		cfg,
+		cfg, db,
 		linkService,
 		domainService,
 		folderService,

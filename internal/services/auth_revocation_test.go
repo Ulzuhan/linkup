@@ -147,7 +147,15 @@ func TestOIDCGroupRemovalAppliesOnNextRequest(t *testing.T) {
 	if err != nil || !session.IsAdmin {
 		t.Fatalf("initial login: %v", err)
 	}
-	apiUser := &models.UserSession{Username: "alice"}
+	keys := NewAPIKeyService(f.db, func(string) bool { return false })
+	_, secret, err := keys.CreateOIDC("subject", f.session.UserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	apiUser, err := keys.ValidateKey(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := f.auth.AuthorizeAPIKey(context.Background(), apiUser); err != nil {
 		t.Fatal(err)
 	}

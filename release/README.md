@@ -1,65 +1,70 @@
-# Image-only return over current SQLite
+# Exact OCI preparation and corrected contracts
 
-This lane is prepared for review; it does not deploy, schedule work or authorize
-publication. The initial compatible scope is patches in 0.8.x. The exact signed
-0.8.0 baseline is recorded in `rollback.json`: source, digest, publisher run and
-attempt are verified against the certificate, not a free provenance predicate.
-That historical release has a tag and signed publisher even though no GitHub
-Release object exists.
+These drafts prepare LinkUp; they do not authorize publication or activation.
+Functional CI builds and scans one linux/amd64 OCI, executes its hashed runtime,
+archives its provenance/SBOM and verifies transferred bytes. Trivy still blocks
+fixable HIGH/CRITICAL vulnerabilities. No image is rebuilt at publication.
 
-The release calls functional CI at its exact tag SHA. CI builds one scanned OCI,
-loads its hashed amd64 runtime, exercises HTTP and SQLite return against the
-baseline, and archives the same index including provenance and SBOM. Transfer
-is reverified byte by byte. Only the tag publisher gets write permissions after
-the gates; it copies those bytes, verifies its signature and then promotes the
-same digest. PRs, branches, forks and manual runs cannot publish. Stable version
-tags cannot be silently replaced with different bytes. Trivy's existing policy
-still blocks fixable HIGH/CRITICAL findings.
+The production Go file set and hashes in `persistence-policy.json` freeze this
+manual auth/readiness correction (`linkup-auth-readiness-v2`). Changed writers,
+startup, SQL or auth still require manual compatibility review. The SQLite DDL,
+link owners/slugs, Unix seconds and session encryption format are unchanged.
 
-`persistence-policy.json` freezes the production Go file set and bytes reviewed
-at 31ddb9036b33315bce08ebefe8152044fc022b18. This is conservative: changed SQL,
-startup, authentication, writers or newly added production Go require a manual
-compatibility/migration review before changing the policy. A hash guard is not
-a proof of every semantic property. Dependencies and static assets can change
-only while all functional and exact-runtime gates still pass.
+## API key identity and compatibility
 
-Persisted data consists of `linkup.db` and its WAL/SHM companions. Owners and
-slugs, custom domains, folders, targets/routing, pause/expiry/click budgets and
-Unix seconds retain their meanings. The database also contains hashed API keys,
-encrypted OIDC access tokens, sessions, logout replay IDs and webhook secrets;
-backups must be treated as credentials. Keep the same session encryption key
-and configuration across an image return. Unreviewed associated files or a
-foreign/partial/changed schema require coordinated backup and manual migration.
+New OIDC keys created by `/api/keys` or `/settings/keys` receive a server-generated
+`oidc-subject-v2:` ID and retain the verified subject as `user_id`. Authorization
+looks up only that subject's live login, checks UserInfo and current access,
+then revalidates the exact key ID/hash/owner and session after the provider
+request. Group membership never elevates a key to group administrator. The
+historical login migration cannot reassign typed keys to a matching mutable name.
 
-The synthetic gate uses one application writer at a time and a separate temporary
-directory. A read-only SQLite source connection creates a consistent backup,
-including committed WAL; integrity and schema are checked. Candidate writes,
-updated targets, new slugs, pauses/deletions, counters and deleted session/key
-rows survive the return to the exact previous image over the **current database**.
-Synthetic encrypted cookies and keys work before deletion and remain rejected
-after return. OIDC discovery/login/PKCE are checked against a disposable provider.
-The accepted key fixture uses the existing legacy username-key path. The current
-and historical authorization code rejects a subject-key when its subject differs
-from the stored login name: its proof retains the subject as `Username`. This
-existing application limitation is recorded, not fixed by deployment preparation;
-the fixture does not prove that every newly created OIDC key works.
+Historical OIDC keys have no durable distinction between subject and login-name
+ownership. They now fail closed and must be reissued from a verified cookie;
+this includes old subject keys. Existing real-login adoption retains historical
+metadata management, but does not make untyped keys usable in OIDC mode.
+Standalone key authentication retains its existing behavior. No bulk bearer
+migration, new DDL, broad alias access or changes to the raw secret/hash format.
+Already authorized in-flight operations are not undone by later revocation.
 
-A negative control restores the older copy only into a new isolated target:
-new writes disappear and formerly deleted cookies/keys become usable again.
-Integrity success does not imply semantic preservation. No automatic data restore
-exists. An operator must stop the writer, choose the recovery point, reconcile
-newer writes and revocations, and explicitly approve any restore. Never overwrite
-current SQLite as part of image rollback.
+## Liveness and readiness
 
-Limits: the gate does not authenticate a real account or exercise a live tunnel.
-Health endpoints report router health; they do not themselves query SQLite, so
-the rehearsal also verifies database reads/writes and integrity. Production
-adoption requires a separately authorized consistent backup and health/resource
-inspection. No live data or credentials are used here. Async click/webhook work
-in flight is not guaranteed by the five-second shutdown; no downtime guarantee
-is made. Returning to 0.8.0 also returns its older cache mutation behavior; the
-current source's locking fix is not present in that historical binary.
+`/health` is process HTTP liveness. `/healthz` is readiness and returns200 only
+with `{"status":"healthy","service":"linkup","sqlite":"ready"}`. Failure is a
+generic503, with no database path, SQL, rows, provider body or internal error.
+Both existing routes are outside the write limiter; no printed slug is reserved
+or shadowed by a new top-level `/livez` or `/readyz` alias.
 
-Before a later release, review and test the rollback pair against the effective
-last-good. Do not skip releases without proving that exact return pair. Format,
-configuration, resource, session-key and migration changes remain manual.
+Readiness records the application DB.Close lifecycle, checks the configured
+regular file's original inode and opens one fresh `file:` SQLite URI with
+`mode=ro`, `query_only(1)` and busy_timeout100ms. It reads schema metadata and
+prepares all required table/column projections with `WHERE0`; no user rows are
+read and no user data is written. It never calls the writer's Open/Migrate/Ping
+path, recreates a missing file, or restores anything. SQLite WAL reader bookkeeping
+may touch SHM read marks. A single global probe and a one-second context budget
+bound contention; modernc Prepare/open I/O does not guarantee a hard OS I/O
+deadline. This does not prove write access, free space, constraints/indexes or full
+page/row integrity. Backups require separate integrity/schema checks.
+
+## The historical baseline is not an automatic return target
+
+`rollback.json` still records the real signed0.8.0 release for a historical
+negative control. It has the same DDL but cannot authorize typed subject keys
+and its router-only health response lacks the SQLite marker. Exact-image CI
+proves these incompatibilities, real new-key routes, SQLite failures and current
+synthetic data preservation. It does not call that old pair compatible.
+
+Publication is explicitly blocked by `persistence-policy.py --publication`,
+both before registry login in the workflow and before candidate/promote copy.
+The infra wrapper likewise blocks adoption/apply/reconcile/rollback until a
+corrected signed baseline and supervised bootstrap are separately reviewed.
+Testing two unpublished corrected OCI artifacts can prove isolated image return;
+fixture admission is not a real signature, published release or activation.
+
+Backups contain hashed keys, encrypted access tokens, sessions and webhook
+secrets and require private handling. A consistent backup includes committed
+WAL. Image return uses current SQLite with the same config/session key and one
+writer at a time. A separate stale-restore control shows lost new writes and
+revived deleted auth. Data restore is always an explicit manual recovery,
+never part of automatic image rollback. Async clicks/webhooks and downtime
+remain outside the guarantee;0.8.0 also lacks the current cache locking fix.

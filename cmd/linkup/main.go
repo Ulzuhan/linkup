@@ -74,7 +74,7 @@ func main() {
 
 	// 6. Build HTTP Router
 	router := handlers.NewRouter(
-		cfg,
+		cfg, db,
 		linkService,
 		domainService,
 		folderService,

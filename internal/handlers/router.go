@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/config"
+	"github.com/Ulzuhan/linkup/internal/database"
 	"github.com/Ulzuhan/linkup/internal/services"
 	"github.com/Ulzuhan/linkup/internal/web"
 	"github.com/go-chi/chi/v5"
@@ -14,6 +15,7 @@ import (
 
 func NewRouter(
 	cfg *config.Config,
+	db *database.DB,
 	linkService *services.LinkService,
 	domainService *services.DomainService,
 	folderService *services.FolderService,
@@ -43,8 +45,14 @@ func NewRouter(
 	// Health Check
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		if db.Ready(r.Context()) != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"status":"unavailable","service":"linkup"}`))
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"healthy","service":"linkup"}`))
+		_, _ = w.Write([]byte(`{"status":"healthy","service":"linkup","sqlite":"ready"}`))
 	})
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -61,7 +69,7 @@ func NewRouter(
 	apiHandler := NewAPIHandler(cfg, linkService, authService, apiKeyService)
 	domainHandler := NewDomainHandler(domainService, authService, apiKeyService)
 	folderHandler := NewFolderHandler(folderService, authService, apiKeyService)
-	apiKeyHandler := NewAPIKeyHandler(apiKeyService, authService)
+	apiKeyHandler := NewAPIKeyHandler(cfg, apiKeyService, authService)
 	webhookHandler := NewWebhookHandler(webhookService, authService, apiKeyService)
 	bulkHandler := NewBulkHandler(csvService, authService, apiKeyService)
 

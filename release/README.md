@@ -68,3 +68,15 @@ writer at a time. A separate stale-restore control shows lost new writes and
 revived deleted auth. Data restore is always an explicit manual recovery,
 never part of automatic image rollback. Async clicks/webhooks and downtime
 remain outside the guarantee;0.8.0 also lacks the current cache locking fix.
+
+## Corrected pair rehearsal
+
+The isolated Compose gate uses two distinct successful CI artifacts with the
+same reviewed Go bytes and different source/config IDs. It exercises API key
+creation/use/revocation, current-data return, rejected health after writes,
+interrupted journal recovery and SQLite failure before stop. The staged OCI
+labels still name the historical signed negative-control baseline. The fixture
+explicitly demonstrates that production image policy rejects admitting that
+staged pair, then models corrected-pair admission only for lifecycle tests.
+A real fixed baseline, actual compatible-pair labels/signatures and supervised
+bootstrap still need separate review and authorization.

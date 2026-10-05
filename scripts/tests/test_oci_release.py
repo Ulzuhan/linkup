@@ -71,6 +71,15 @@ class OCITests(unittest.TestCase):
         with self.assertRaises(oci.Refused):
             self.verify(root)
 
+    def test_old_or_missing_auth_readiness_contracts_are_rejected(self):
+        for label in ("io.kaicorp.linkup.auth-contract", "io.kaicorp.linkup.readiness-contract"):
+            root=copy.deepcopy(self.root)
+            config=json.loads(oci.blob(self.layout,self.config));config["config"]["Labels"].pop(label)
+            manifest=json.loads(oci.blob(self.layout,root["manifests"][0]));manifest["config"]=self.put(config)
+            descriptor=self.put(manifest);descriptor["platform"]={"architecture":"amd64","os":"linux"}
+            root["manifests"][0]=descriptor
+            with self.subTest(label=label),self.assertRaises(oci.Refused):self.verify(root)
+
     def test_external_descriptors_and_symlinks_are_rejected(self):
         descriptor = dict(self.config, urls=["https://example.invalid/config"])
         with self.assertRaises(oci.Refused):

@@ -52,20 +52,20 @@ must keep the external test IdP and load generator fixed.
 
 ### Release artifact
 
-The tag workflow builds one OCI directory layout with SBOM and provenance. Trivy
-v0.74.0 reads OCI layouts as directories, not OCI tarballs. It scans that layout
-before anything is uploaded. Skopeo copies the same layout with
-`--all --preserve-digests`, retaining attestations and refusing digest changes.
-The publisher checks the BuildKit digest before uploading and each destination
-digest afterwards. It does not build a second image after the security gate.
-Skopeo is a temporary CI tool, not a production container or runtime dependency.
+The tag workflow calls functional CI at the exact release SHA. CI calls
+`.github/actions/scanned-oci` once, scans the OCI layout with the existing
+Trivy v0.75.0 policy, loads its exact config ID and tests the image return over
+current synthetic SQLite. Source/digest and the archive are retained for seven
+days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
+publisher gets registry/signing permissions after these gates; it copies the
+same bytes, verifies the signed source/tag and promotes without rebuilding.
 
-Both PR CI and tag releases call `.github/actions/scanned-oci`. The PR job has
-only `contents: read`, does not log in to a registry and cannot publish packages.
-After tests it builds, scans and verifies the layout digest, retaining that OCI
-directory as a GitHub artifact for three days. Its digest is in the job summary.
-That artifact is for inspection/isolated staging, not approval to promote F1:
-equivalent HTTP performance, final-image tests and rollback remain separate gates.
+The rehearsal uses CI-only `python3-cryptography` from the runner's distribution
+to generate synthetic AES-GCM cookies matching the existing Go format; it adds
+no application dependency. It proves why stale backup restore must remain
+manual and separate from image return. Functional/return checks do not approve
+performance promotion: the historical F1 evidence and its limits remain separate.
+See [the reviewed lane and limits](release/README.md).
 Docker's compiler and runtime bases are pinned by digest as well as version;
 updating a tag without its digest does not change the selected image.
 The [F1 OCI evidence](docs/benchmarks/2026-09-05-f1-oci.md) records a verified

@@ -207,3 +207,9 @@ docker compose pull && docker compose up -d
 Schema migrations run at startup, inside `database.Open`. To roll back, put the
 previous digest back — but read what the newer version's migration did first: an
 applied migration does not undo itself.
+# Reviewed image-only deployment preparation
+
+The prospective 0.8.x lane and its exact signed baseline are documented in
+[release/README.md](release/README.md). It requires functional CI at the same
+source SHA, the tested/scanned OCI and a return rehearsal over current SQLite.
+Preparing this lane does not activate a deployment or authorize a release.

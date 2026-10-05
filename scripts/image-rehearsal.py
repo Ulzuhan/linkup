@@ -126,7 +126,7 @@ def create(base, slug, url="https://example.org/first", **fields):
 
 
 def update(base, identity, **fields):
-    assert request(base, "/api/links/" + identity, "PUT", fields)[0] == 200
+    assert request(base, "/api/links/" + identity, "PATCH", fields)[0] == 200
 
 
 def credentials(now):

@@ -131,7 +131,7 @@ def main():
                 "oci:" + str(args.layout), "docker-daemon:linkup-go:ci")
         loaded = command("docker", "image", "inspect", "linkup-go:ci", "--format", "{{.Id}}").decode().strip()
         if loaded != image_id:
-            raise Refused("loaded runtime differs from the gated OCI config")
+            raise Refused(f"loaded runtime {loaded} differs from gated OCI config {image_id}")
     elif args.action in ("candidate", "promote"):
         version = publication_context()
         immutable_version(version, args.digest)

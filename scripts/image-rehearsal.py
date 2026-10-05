@@ -206,11 +206,19 @@ def main():
             assert backup.execute("SELECT click_count FROM links WHERE id=?", (ids["printed"],)).fetchone() == (1,)
             backup.close();source.close();db.close()
         oidc_smoke(args.baseline, data, auth, 200)
+        oidc_smoke(args.candidate, data, auth, 200)
         with serve(args.candidate, data) as base:
             assert request(base, "/printed")[0] == 302
             update(base, ids["printed"], target_url="https://example.org/after")
             update(base, ids["paused"], is_active=False)
             update(base, ids["budget"], max_clicks=1)
+            assert request(base, "/budget")[0] == 302
+            deadline = time.monotonic() + 5
+            db = sqlite3.connect(data / "linkup.db")
+            while db.execute("SELECT click_count FROM links WHERE id=?", (ids["budget"],)).fetchone()[0] < 1:
+                assert time.monotonic() < deadline;time.sleep(0.05)
+            db.close()
+            assert request(base, "/budget")[0] == 410
             assert request(base, "/api/links/" + ids["deleted"], "DELETE")[0] == 200
             ids["new"] = create(base, "new-after-backup", "https://example.org/new")
             assert request(base, "/paused")[0] == 410 and request(base, "/deleted")[0] == 404
@@ -221,13 +229,14 @@ def main():
             assert request(base, "/printed")[2]["Location"] == "https://example.org/after"
             assert request(base, "/new-after-backup")[0] == 302
             assert request(base, "/paused")[0] == 410 and request(base, "/deleted")[0] == 404
+            assert request(base, "/budget")[0] == 410
             db = sqlite3.connect(data / "linkup.db");integrity(db);schema(db);inventory(data)
             assert db.execute("SELECT count(*) FROM oidc_sessions WHERE id='revoked'").fetchone() == (0,)
             assert db.execute("SELECT count(*) FROM api_keys WHERE id='deleted-key'").fetchone() == (0,)
             assert db.execute("SELECT count(*) FROM oidc_logout_jtis WHERE jti='logout'").fetchone() == (1,)
             assert db.execute("SELECT secret FROM webhooks WHERE id='webhook'").fetchone() == ("synthetic",)
             assert db.execute("SELECT created_by FROM links WHERE id=?", (ids["printed"],)).fetchone() == ("dev-user-id",)
-            assert db.execute("SELECT max_clicks FROM links WHERE id=?", (ids["budget"],)).fetchone() == (1,)
+            assert db.execute("SELECT max_clicks,click_count FROM links WHERE id=?", (ids["budget"],)).fetchone() == (1, 1)
             db.close()
         oidc_smoke(args.candidate, data, auth, 401)
         oidc_smoke(args.baseline, data, auth, 401)

@@ -31,7 +31,7 @@ runs:
       shell: bash
       run: python3 scripts/persistence-policy.py
     - id: bootstrap
-      name: Derive the closed supervised bootstrap contract
+      name: Derive the reviewed release and image-return contract
       shell: bash
       run: |
         echo 'labels<<LINKUP_BOOTSTRAP_LABELS' >> "$GITHUB_OUTPUT"
@@ -81,9 +81,9 @@ runs:
       run: |
         image_id=$(python3 scripts/oci-release.py load --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
         echo "LINKUP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
-    - name: Exact fixed runtime, real key routes, SQLite readiness and historical negative return
+    - name: Exact C and signed B1, real keys and current SQLite image return
       shell: bash
-      run: sudo python3 scripts/image-rehearsal.py --candidate "$LINKUP_TEST_IMAGE" --baseline '${{ steps.rollback.outputs.image }}'
+      run: sudo python3 scripts/image-rehearsal.py --candidate "$LINKUP_TEST_IMAGE" --baseline '${{ steps.rollback.outputs.image }}' --report "$RUNNER_TEMP/linkup-image-report.json"
     - name: Default runtime identity is uid 10001
       shell: bash
       run: docker run --rm --entrypoint sh "$LINKUP_TEST_IMAGE" -c 'test "$(id -u)" = 10001'
@@ -101,6 +101,7 @@ runs:
           ${{ runner.temp }}/linkup-oci.tar
           ${{ runner.temp }}/linkup-oci-source.txt
           ${{ runner.temp }}/linkup-oci-digest.txt
+          ${{ runner.temp }}/linkup-image-report.json
         compression-level: 0
         retention-days: 7
         if-no-files-found: error

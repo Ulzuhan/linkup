@@ -19,7 +19,7 @@ class Refused(RuntimeError):
 def baseline(path=CONFIG):
     data = json.loads(path.read_text())
     if (set(data) != {"version", "digest", "source", "run", "attempt", "store_contract"}
-            or not re.fullmatch(r"0\.8\.\d+", data.get("version", ""))
+            or not re.fullmatch(r"0\.8\.[1-9][0-9]*", data.get("version", ""))
             or not re.fullmatch(r"sha256:[a-f0-9]{64}", data.get("digest", ""))
             or not re.fullmatch(r"[a-f0-9]{40}", data.get("source", ""))
             or type(data.get("run")) is not int or data["run"] < 1
@@ -57,7 +57,7 @@ def verify(data):
     for entry in verified:
         result = entry.get("verificationResult", {})
         certificate = result.get("signature", {}).get("certificate", {})
-        if certificate.get("runInvocationURI") == uri and any(
+        if certificate.get("runInvocationURI") == uri and certificate.get("sourceRepositoryDigest") == data["source"] and any(
                 s.get("name") == IMAGE and s.get("digest", {}).get("sha256") == data["digest"].split(":")[1]
                 for s in result.get("statement", {}).get("subject", [])):
             return

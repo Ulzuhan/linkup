@@ -1,7 +1,10 @@
 # Exact OCI preparation and corrected contracts
 
-The reviewed manifest authorizes only the stable 0.8.1 bootstrap publication.
-It does not authorize host deployment or activation.
+The 0.8.2 candidate prepares an image-return contract with the deployed, signed
+0.8.1 baseline. Production Go, dependencies, UI, Dockerfile and SQLite schema
+are unchanged. This maintenance candidate supplies the reviewed release bytes
+needed to rehearse B1/C; it adds no application feature. Publication, merge,
+host handoff and activation are pending approval.
 Functional CI builds and scans one linux/amd64 OCI, executes its hashed runtime,
 archives its provenance/SBOM and verifies transferred bytes. Trivy still blocks
 fixable HIGH/CRITICAL vulnerabilities. No image is rebuilt at publication.
@@ -47,32 +50,43 @@ bound contention; modernc Prepare/open I/O does not guarantee a hard OS I/O
 deadline. This does not prove write access, free space, constraints/indexes or full
 page/row integrity. Backups require separate integrity/schema checks.
 
-## The historical baseline is not an automatic return target
+## Prepared compatible image return, with publication blocked
 
-`rollback.json` still records the real signed0.8.0 release for a historical
-negative control. It has the same DDL but does not enforce typed subject ownership
-and its router-only health response lacks the SQLite marker. Exact-image CI
-proves these incompatibilities, real new-key routes, SQLite failures and current
-synthetic data preservation. It does not call that old pair compatible.
+`rollback.json` records the real signed B1 release 0.8.1: source
+`39e284e695cecb8671f79a710ef187385b9843c5`, publisher 37453232322/attempt1,
+OCI `sha256:8bcc1f3874ec74b5eb1a9704002388ce0a3d63fdee98b47b277e1e79a80e60d5`.
+The workflow verifies the successful release record and exact signature
+certificate source/run/attempt/subject/digest, and executes its actual runtime
+`sha256:643a0da53feb3e2e6868f30499eb214f2da5a4602de526f3200cab78ab963d0f`.
+B1 keeps its original bootstrap labels and has no rollback-image label.
+Historical 0.8.0 is incompatible with typed keys and SQLite readiness and is
+never selected as the compatible return image.
 
-`bootstrap-policy.json` is a separately reviewed manifest. It currently has
-`publication_authorized=true`, `version="0.8.1"`, `automatic_return=false` and
-`floating_tags=false`. `persistence-policy.py --publication` requires the same
-version in the Go repository's `VERSION` file and an exact canonical tag-push
-context before registry login and candidate/promote registry access. OCI
-verification also requires that exact version label. CLI flags and environment
-cannot change the reviewed manifest. This is a
-supervised first-publication lane, not a compatible automatic return lane.
-The OCI declares `deployment-lane=supervised-bootstrap-v1` and
-`automatic-return=false`; it must have no `rollback-image` label. Changing those
-labels requires a new OCI build and rehearsal. The publisher copies that exact
-tested index to a unique run/attempt candidate, verifies its signed source/tag,
-certificate run/attempt and subject/digest, then copies only the version tag.
-It never moves `0.8`, `0` or `latest`. The old shell helper is verification-only.
-The infra wrapper likewise blocks adoption/apply/reconcile/rollback until a
-corrected signed baseline and supervised bootstrap are separately reviewed.
-Testing two unpublished corrected OCI artifacts can prove isolated image return;
-fixture admission is not a real signature, published release or activation.
+The existing reviewed `bootstrap-policy.json` now selects the separate
+`compatible-image-return-v1` lane, version0.8.2, `automatic_return=true`,
+`publication_authorized=false` and `floating_tags=false`. In this lane,
+automatic-return expresses a technical capability: return only the image to
+the exact B1 digest over current SQLite, with the same configuration and one
+application writer at a time. It grants no operational permission. The OCI
+must declare that lane, capability and exact `rollback-image` B1. Actual B1
+labels must not be rewritten to imitate C.
+
+The publication gate refuses even an exact canonical version-tag push while
+publication_authorized is false, before registry login or candidate/promote
+registry access. CLI/environment overrides cannot authorize it. The direct
+shell publisher remains verification-only. CI stores the scanned OCI as an
+Actions artifact; it creates no registry candidate, version tag, release or
+floating alias. A future authorized publisher must reuse verified bytes and
+bind source/tag/run/attempt/digest; any source/policy change needs a new CI OCI
+and rehearsal. It never moves `0.8`, `0` or `latest`.
+
+Exact-image CI exercises B1 -> C -> B1 on synthetic current SQLite. It tests
+real key creation/revocation routes, a C-created typed key usable after B1
+return, writes and revocations, readiness and a separate stale-restore negative
+control. The infra Compose rehearsal reuses that same OCI without rebuild.
+C release admission is explicitly simulated there; B1 signature is real.
+The infra wrapper keeps BOOTSTRAP_REQUIRED=True and installed LinkUp timers
+remain absent/inactive. Handoff and operation require later approval.
 
 Backups contain hashed keys, encrypted access tokens, sessions and webhook
 secrets and require private handling. A consistent backup includes committed
@@ -99,12 +113,10 @@ conditional impact and unmeasured runtime limits are tracked in the separate
 default CD prerequisite. Stronger revocation guarantees need their own reviewed
 contract and validation; the typed-key/readiness and deployment gates remain.
 
-The infra first-jump rehearsal uses the signed historical B0 as origin and this
-exact unpublished OCI as B1. B0 cannot be last-good for typed keys/readiness.
-The supervised controller journals forward-only recovery and preserves current
-SQLite; failures do not activate B0 or restore a backup. Unpublished B1 admission
-is an explicit fixture. Publication, live cutover and eventual handoff to a
-signed B1 baseline each require their own reviewed evidence. Real key reissue
-is needed only when historical stored keys exist; a zero-key aggregate is not
-an exhaustive inventory of external consumers or proof of database integrity.
-Later automatic image updates still need a real compatible signed pair.
+The completed first jump used signed historical B0 -> signed B1 with
+forward-only recovery over current SQLite. It must not be repeated as a normal
+rollback. This candidate instead prepares the compatible B1/C pair in isolation;
+the live bootstrap journal stays intact until a separately approved handoff.
+Real key reissue is needed only when historical stored keys exist; a zero-key
+aggregate is not an exhaustive inventory of external consumers or proof of
+database integrity. The canceled real OIDC permissions audit is outside CD.

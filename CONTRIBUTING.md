@@ -54,14 +54,17 @@ must keep the external test IdP and load generator fixed.
 
 The tag workflow calls functional CI at the exact release SHA. CI calls
 `.github/actions/scanned-oci` once, scans the OCI layout with the existing
-Trivy v0.75.0 policy, loads its exact config ID and tests corrected key routes, SQLite readiness and historical data return over
-current synthetic SQLite, with the old automatic pair explicitly blocked. Source/digest and the archive are retained for seven
+Trivy v0.75.0 policy, loads its exact config ID and tests key routes, SQLite
+readiness and C -> signed B1 image return over current synthetic SQLite.
+Historical B0 remains incompatible. Source/digest and the archive are retained for seven
 days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
 publisher gets registry/signing permissions after these gates; it copies the
 same bytes, verifies signed source/tag/run/attempt and promotes only the reviewed
-version without rebuilding or moving floating aliases. The bootstrap manifest
-authorizes only the exact 0.8.1 canonical tag push; synthetic publisher tests
-never authorize publication or host deployment.
+version without rebuilding or moving floating aliases. The reviewed manifest
+prepares 0.8.2 compatible return capability but blocks publication even for the
+exact canonical tag push (`publication_authorized=false`). Synthetic tests
+never authorize publication, merge, handoff or host operation. B1 keeps its
+actual bootstrap labels; C must declare its exact B1 rollback digest.
 
 The rehearsal uses CI-only `python3-cryptography` from the runner's distribution
 to generate synthetic AES-GCM cookies matching the existing Go format; it adds

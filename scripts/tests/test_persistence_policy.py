@@ -45,28 +45,34 @@ class PersistenceTests(unittest.TestCase):
             (root/"asset.png").unlink();(root/"unexpected").symlink_to(root/"missing")
             with self.assertRaises(ValueError):rehearsal.inventory(root)
 
-    def test_publication_is_blocked_until_signed_fixed_bootstrap(self):
-        result=subprocess.run([sys.executable,str(ROOT/"scripts/persistence-policy.py"),"--publication"],capture_output=True,text=True)
-        self.assertNotEqual(result.returncode,0)
-        self.assertIn("not authorized",result.stderr)
-
-    def test_bootstrap_requires_reviewed_manifest_not_flags_or_environment(self):
-        with patch.dict(os.environ,{'BOOTSTRAP_PUBLICATION_AUTHORIZED':'true','GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'},clear=True):
+    def test_disabled_manifest_blocks_publication_before_context_or_version(self):
+        disabled=dict(policy.bootstrap_policy(),publication_authorized=False,version=None)
+        with patch.object(policy,'bootstrap_policy',return_value=disabled):
             with self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()
 
-    def test_exact_reviewed_version_package_and_lock_required(self):
+    def test_bootstrap_requires_reviewed_manifest_not_flags_or_environment(self):
+        disabled=dict(policy.bootstrap_policy(),publication_authorized=False,version=None)
+        with patch.object(policy,'bootstrap_policy',return_value=disabled),patch.dict(os.environ,{'BOOTSTRAP_PUBLICATION_AUTHORIZED':'true','GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'},clear=True):
+            with self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()
+
+    def test_exact_reviewed_go_version_and_canonical_tag_context_required(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'release').mkdir()
             data=policy.bootstrap_policy();data.update(publication_authorized=True,version='0.8.101')
             manifest=root/'release/bootstrap-policy.json';manifest.write_text(json.dumps(data))
-            (root/'package.json').write_text(json.dumps({'version':'0.8.101'}))
-            (root/'package-lock.json').write_text(json.dumps({'version':'0.8.101','packages':{'':{'version':'0.8.101'}}}))
+            version=root/'VERSION';version.write_text('0.8.101\n')
             good={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
             with patch.object(policy,'verify'),patch.dict(os.environ,good,clear=True):
                 self.assertEqual(policy.publication(root),'0.8.101')
-                with patch.dict(os.environ,{'GITHUB_REF':'refs/tags/v0.8.102'}):
-                    with self.assertRaises(ValueError):policy.publication(root)
-                (root/'package-lock.json').write_text(json.dumps({'version':'0.8.101','packages':{'':{'version':'0.8.100'}}}))
+                for change in ({'GITHUB_REF':'refs/tags/v0.8.102'},{'GITHUB_REF':'refs/heads/main'},{'GITHUB_EVENT_NAME':'pull_request'},{'GITHUB_EVENT_NAME':'workflow_dispatch'},{'GITHUB_REPOSITORY':'fork/linkup'}):
+                    with self.subTest(change=change),patch.dict(os.environ,change):
+                        with self.assertRaises(ValueError):policy.publication(root)
+                for value in ('0.8.100\n','0.8.101\n0.8.102\n','0.8.101-rc.1\n'):
+                    version.write_text(value)
+                    with self.subTest(value=value),self.assertRaises(ValueError):policy.publication(root)
+                version.unlink()
+                with self.assertRaises(ValueError):policy.publication(root)
+                (root/'target').write_text('0.8.101\n');version.symlink_to(root/'target')
                 with self.assertRaises(ValueError):policy.publication(root)
             for change in ({'automatic_return':True},{'floating_tags':True},{'schema':True},{'publication_authorized':'true'},{'version':None},{'version':'0.8.0'},{'version':'0.8.1-rc.1'},{'version':0.81},{'unexpected':True}):
                 manifest.write_text(json.dumps(dict(data,**change)))

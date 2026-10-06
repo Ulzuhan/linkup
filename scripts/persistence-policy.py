@@ -18,14 +18,18 @@ def bootstrap_policy(root=ROOT):
      or (data["publication_authorized"] and data["version"] is None)):
   raise ValueError("invalid reviewed bootstrap policy")
  return data
+def release_version(root=ROOT):
+ path=root/"VERSION"
+ if path.is_symlink() or not path.is_file():raise ValueError("regular release VERSION file required")
+ version=path.read_text().strip()
+ if not re.fullmatch(r"0\.8\.[1-9][0-9]*",version) or version!=bootstrap_policy(root)["version"]:
+  raise ValueError("VERSION differs from the reviewed bootstrap tag")
+ return version
 def publication(root=ROOT):
  verify(root)
  data=bootstrap_policy(root)
  if not data["publication_authorized"]:raise ValueError("publication blocked: supervised bootstrap publication is not authorized")
- for name in ("package.json","package-lock.json"):
-  package=json.loads((root/name).read_text())
-  if package.get("version")!=data["version"] or (name=="package-lock.json" and package.get("packages",{}).get("",{}).get("version")!=data["version"]):
-   raise ValueError("package/lock version differs from the reviewed bootstrap tag")
+ release_version(root)
  if (os.environ.get("GITHUB_REPOSITORY")!="Ulzuhan/linkup"
      or os.environ.get("GITHUB_EVENT_NAME")!="push"
      or os.environ.get("GITHUB_REF")!="refs/tags/v"+data["version"]):
@@ -46,7 +50,7 @@ if __name__=="__main__":
   bootstrap_policy()
   if sys.argv[1:]==["--publication"]:publication()
   elif sys.argv[1:]==["--labels"]:
-   print("\n".join(name+"="+value for name,value in BOOTSTRAP_LABELS.items()))
+   print("\n".join(name+"="+value for name,value in {**BOOTSTRAP_LABELS,"org.opencontainers.image.version":release_version()}.items()))
   elif sys.argv[1:]:raise ValueError("unsupported policy arguments")
-  else:print("linkup-sqlite-v1: reviewed auth/readiness correction; bootstrap prepared, publication disabled")
+  else:print("linkup-sqlite-v1: reviewed auth/readiness correction; supervised bootstrap "+str(bootstrap_policy()["version"]))
  except (ValueError,OSError,KeyError) as error:print(str(error),file=sys.stderr);sys.exit(1)

@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "lane": "supervised-bootstrap-v1",
-  "publication_authorized": false,
-  "version": null,
+  "publication_authorized": true,
+  "version": "0.8.1",
   "automatic_return": false,
   "floating_tags": false
 }

@@ -60,7 +60,8 @@ days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
 publisher gets registry/signing permissions after these gates; it copies the
 same bytes, verifies signed source/tag/run/attempt and promotes only the reviewed
 version without rebuilding or moving floating aliases. The bootstrap manifest
-remains disabled; synthetic publisher tests never authorize real publication.
+authorizes only the exact 0.8.1 canonical tag push; synthetic publisher tests
+never authorize publication or host deployment.
 
 The rehearsal uses CI-only `python3-cryptography` from the runner's distribution
 to generate synthetic AES-GCM cookies matching the existing Go format; it adds

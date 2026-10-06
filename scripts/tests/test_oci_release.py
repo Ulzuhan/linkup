@@ -23,7 +23,7 @@ class OCITests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.layout = Path(self.tmp.name)
         (self.layout / "blobs/sha256").mkdir(parents=True)
-        labels = {"io.kaicorp.linkup.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
+        labels = {"io.kaicorp.linkup.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "org.opencontainers.image.version":oci.policy.release_version(), "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
                   **oci.policy.BOOTSTRAP_LABELS,
                   "io.kaicorp.linkup.auth-contract": "oidc-subject-v2", "io.kaicorp.linkup.readiness-contract":"sqlite-ro-v1"}
         self.config = self.put({"architecture": "amd64", "os": "linux", "config": {"Labels": labels}})
@@ -73,7 +73,7 @@ class OCITests(unittest.TestCase):
             self.verify(root)
 
     def test_old_or_missing_auth_readiness_contracts_are_rejected(self):
-        for label in ("io.kaicorp.linkup.auth-contract", "io.kaicorp.linkup.readiness-contract"):
+        for label in ("io.kaicorp.linkup.auth-contract", "io.kaicorp.linkup.readiness-contract", "org.opencontainers.image.version"):
             root=copy.deepcopy(self.root)
             config=json.loads(oci.blob(self.layout,self.config));config["config"]["Labels"].pop(label)
             manifest=json.loads(oci.blob(self.layout,root["manifests"][0]));manifest["config"]=self.put(config)
@@ -90,6 +90,15 @@ class OCITests(unittest.TestCase):
         path.symlink_to(self.layout / "missing")
         with self.assertRaises(oci.Refused):
             oci.blob(self.layout, self.config)
+
+    def test_wrong_release_version_label_cannot_be_published_as_reviewed_version(self):
+        root=copy.deepcopy(self.root)
+        config=json.loads(oci.blob(self.layout,self.config))
+        config['config']['Labels']['org.opencontainers.image.version']='0.8.101'
+        manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
+        descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'}
+        root['manifests'][0]=descriptor
+        with self.assertRaises(oci.Refused):self.verify(root)
 
     def test_publication_is_impossible_from_pr_main_dispatch_or_fork(self):
         good = {"GITHUB_REF": "refs/tags/v0.8.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/linkup","GITHUB_SHA":SOURCE}
@@ -132,8 +141,8 @@ class OCITests(unittest.TestCase):
         for action in ('candidate','promote'):
             args=['oci-release.py',action,'--layout',str(self.layout),'--digest','sha256:'+'c'*64,'--source',SOURCE]
             env={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup','GITHUB_SHA':SOURCE}
-            # Verification is already gated in this fixture. The real default
-            # policy subprocess still refuses, even with a spoofed tag context.
+            # Verification is already gated in this fixture. The real policy
+            # subprocess refuses a tag outside the reviewed exact version.
             with patch.object(sys,'argv',args),patch.dict(os.environ,env,clear=True),patch.object(oci,'verify',return_value=self.config['digest']),patch.object(oci,'copy') as copier,patch.object(oci,'immutable_version') as registry:
                 with self.assertRaises(oci.Refused):oci.main()
                 registry.assert_not_called();copier.assert_not_called()

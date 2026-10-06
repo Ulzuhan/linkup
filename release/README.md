@@ -1,6 +1,7 @@
 # Exact OCI preparation and corrected contracts
 
-These drafts prepare LinkUp; they do not authorize publication or activation.
+The reviewed manifest authorizes only the stable 0.8.1 bootstrap publication.
+It does not authorize host deployment or activation.
 Functional CI builds and scans one linux/amd64 OCI, executes its hashed runtime,
 archives its provenance/SBOM and verifies transferred bytes. Trivy still blocks
 fixable HIGH/CRITICAL vulnerabilities. No image is rebuilt at publication.
@@ -55,12 +56,12 @@ proves these incompatibilities, real new-key routes, SQLite failures and current
 synthetic data preservation. It does not call that old pair compatible.
 
 `bootstrap-policy.json` is a separately reviewed manifest. It currently has
-`publication_authorized=false`, `version=null`, `automatic_return=false` and
-`floating_tags=false`. Publication is blocked by
-`persistence-policy.py --publication` before registry login and before
-candidate/promote registry access. CLI flags and environment cannot enable it.
-Future authorization must name one stable version greater than0.8.0, match
-package/lock versions and an exact canonical tag-push context. This is a
+`publication_authorized=true`, `version="0.8.1"`, `automatic_return=false` and
+`floating_tags=false`. `persistence-policy.py --publication` requires the same
+version in the Go repository's `VERSION` file and an exact canonical tag-push
+context before registry login and candidate/promote registry access. OCI
+verification also requires that exact version label. CLI flags and environment
+cannot change the reviewed manifest. This is a
 supervised first-publication lane, not a compatible automatic return lane.
 The OCI declares `deployment-lane=supervised-bootstrap-v1` and
 `automatic-return=false`; it must have no `rollback-image` label. Changing those

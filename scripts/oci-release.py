@@ -80,6 +80,7 @@ def verify(layout, expected, source):
     labels = config.get("config", {}).get("Labels", {})
     if (config.get("architecture") != "amd64" or config.get("os") != "linux"
             or labels.get("org.opencontainers.image.revision") != source
+            or labels.get("org.opencontainers.image.version") != policy.release_version()
             or labels.get("io.kaicorp.linkup.store-contract") != "linkup-sqlite-v1"
             or labels.get("io.kaicorp.linkup.data-action") != "image-only"
             or labels.get("io.kaicorp.linkup.auth-contract") != "oidc-subject-v2"

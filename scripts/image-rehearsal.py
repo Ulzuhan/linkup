@@ -22,7 +22,6 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 SYNTHETIC_SECRET = "synthetic-only-" * 3
-LEGACY_IMAGE = None
 
 
 def command(*args):
@@ -50,9 +49,10 @@ def schema(db):
     expected = sqlite3.connect(":memory:")
     for sql in re.findall(r"`(CREATE.*?)`", (ROOT / "internal/database/schema.go").read_text(), re.S):
         expected.execute(sql)
-    if normalized(db) != normalized(expected):
-        raise ValueError("foreign, partial or changed schema: manual migration review")
+    actual_schema, expected_schema = normalized(db), normalized(expected)
     expected.close()
+    if actual_schema != expected_schema:
+        raise ValueError("foreign, partial or changed schema: manual migration review")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -105,8 +105,7 @@ def serve(image, data, oidc=None):
         while True:
             try:
                 status, body, _ = request(base, "/healthz")
-                expected = {"status": "healthy", "service": "linkup"}
-                if image != LEGACY_IMAGE: expected["sqlite"] = "ready"
+                expected = {"status": "healthy", "service": "linkup", "sqlite": "ready"}
                 assert status == 200 and json.loads(body) == expected
                 break
             except (OSError, AssertionError):
@@ -180,6 +179,8 @@ def oidc_smoke(image, data, auth, expected, key_expected=None, exercise=False):
             assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["api_key"]})[0] == (expected if key_expected is None else key_expected)
             if "route_key" in auth:
                 assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["route_key"]})[0] == (expected if key_expected is None else key_expected)
+            if "original_api_key" in auth:
+                assert request(base, "/api/links", headers={"Authorization": "Bearer " + auth["original_api_key"]})[0] == (expected if key_expected is None else key_expected)
             if exercise:
                 cookie = {"Cookie": "linkup_session=" + auth["cookie"]}
                 status, body, _ = request(base, "/api/keys", "POST", {"name":"actual route"}, cookie)
@@ -193,6 +194,7 @@ def oidc_smoke(image, data, auth, expected, key_expected=None, exercise=False):
                 status, body, _ = request(base, "/api/keys", "POST", {"name":"return compatibility"}, cookie)
                 assert status == 201
                 auth["route_key"] = json.loads(body)["secret"]
+                auth["route_key_id"] = json.loads(body)["api_key"]["id"]
                 assert request(base, "/api/links", headers={"Authorization":"Bearer " + auth["route_key"]})[0] == 200
                 # Removing/restoring the pathname does not change user rows.
                 live = data / "linkup.db";missing = data / "probe-missing.db"
@@ -210,10 +212,27 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidate", required=True)
     parser.add_argument("--baseline", required=True)
+    parser.add_argument("--report", type=Path)
     args = parser.parse_args()
-    global LEGACY_IMAGE
-    LEGACY_IMAGE = args.baseline
+    baseline = json.loads((ROOT / "release/rollback.json").read_text())
+    assert baseline["version"] == "0.8.1" and args.baseline == "ghcr.io/ulzuhan/linkup@" + baseline["digest"]
     command("docker", "pull", args.baseline)
+    images = {name: json.loads(command("docker", "image", "inspect", ref))[0]
+              for name, ref in (("baseline", args.baseline), ("candidate", args.candidate))}
+    b1 = images["baseline"]; c = images["candidate"]
+    assert b1["Id"] == "sha256:643a0da53feb3e2e6868f30499eb214f2da5a4602de526f3200cab78ab963d0f"
+    assert b1["Config"]["Labels"]["org.opencontainers.image.revision"] == baseline["source"]
+    assert b1["Config"]["Labels"]["io.kaicorp.linkup.deployment-lane"] == "supervised-bootstrap-v1"
+    assert b1["Config"]["Labels"]["io.kaicorp.linkup.automatic-return"] == "false"
+    assert "io.kaicorp.linkup.rollback-image" not in b1["Config"]["Labels"]
+    for label in command("python3", str(ROOT / "scripts/persistence-policy.py"), "--labels").splitlines():
+        name, value = label.split("=", 1); assert c["Config"]["Labels"][name] == value
+    for image in images.values():
+        assert image["Architecture"] == "amd64" and image["Os"] == "linux" and image["Config"]["User"] == "linkup:linkup"
+        for name, value in (("auth-contract", "oidc-subject-v2"), ("readiness-contract", "sqlite-ro-v1"),
+                            ("store-contract", "linkup-sqlite-v1"), ("data-action", "image-only")):
+            assert image["Config"]["Labels"]["io.kaicorp.linkup." + name] == value
+    assert c["Id"] == args.candidate and c["Id"] != b1["Id"]
     with tempfile.TemporaryDirectory(prefix="linkup-image-") as tmp:
         root = Path(tmp);root.chmod(0o755);data = root / "data";data.mkdir(mode=0o777);data.chmod(0o777)
         with serve(args.baseline, data) as base:
@@ -226,24 +245,24 @@ def main():
             now = int(time.time())
             auth = credentials(now)
             db.execute("INSERT INTO oidc_sessions VALUES(?,?,?,?,?,?)", ("revoked", "dev-user-id", "sid", "dev-user", auth["access_token"], now + 3600))
-            # Historical compatibility fixture; new images reject untyped OIDC
-            # credentials until reissued from the verified cookie.
-            db.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?)", ("deleted-key", "dev-user", "key", "prefix", auth["key_hash"], None, now))
+            # Typed synthetic subject credential, already supported by real B1.
+            db.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?)", (auth["key_id"], "dev-user-id", "key", "prefix", auth["key_hash"], None, now))
             db.execute("INSERT INTO webhooks VALUES(?,?,?,?,?,?,?)", ("webhook", "sub", "https://example.org/hook", "synthetic", "link.created", 0, now))
             db.commit();integrity(db);schema(db);inventory(data)
+            original_identity = db.execute("SELECT id,slug,created_by,created_at FROM links ORDER BY id").fetchall()
             source = sqlite3.connect("file:" + str(data / "linkup.db") + "?mode=ro", uri=True)
             backup = sqlite3.connect(root / "backup.db");source.backup(backup);integrity(backup);schema(backup)
             # Includes committed WAL while the source writer remains running.
             assert backup.execute("SELECT click_count FROM links WHERE id=?", (ids["printed"],)).fetchone() == (1,)
             backup.close();source.close();db.close()
         oidc_smoke(args.baseline, data, auth, 200)
-        oidc_smoke(args.candidate, data, auth, 200, key_expected=401, exercise=True)
+        oidc_smoke(args.candidate, data, auth, 200, exercise=True)
         # Primary credentials now come from POST /api/keys, not seeded hashes.
-        auth["legacy_api_key"] = auth["api_key"]
+        auth["original_api_key"] = auth["api_key"]
         auth["api_key"] = auth["route_key"]
         oidc_smoke(args.candidate, data, auth, 200)
-        # Old data format survives, but subject keys and readiness do not.
-        oidc_smoke(args.baseline, data, auth, 200, key_expected=401)
+        # Keys created through C's real route must remain usable in signed B1.
+        oidc_smoke(args.baseline, data, auth, 200)
         with serve(args.candidate, data) as base:
             assert request(base, "/printed")[0] == 302
             update(base, ids["printed"], target_url="https://example.org/after")
@@ -260,7 +279,7 @@ def main():
             ids["new"] = create(base, "new-after-backup", "https://example.org/new")
             assert request(base, "/paused")[0] == 410 and request(base, "/deleted")[0] == 404
             db = sqlite3.connect(data / "linkup.db");db.execute("DELETE FROM oidc_sessions WHERE id='revoked'")
-            db.execute("DELETE FROM api_keys WHERE id='deleted-key'");db.execute("INSERT INTO oidc_logout_jtis VALUES(?,?)", ("logout", now + 3600));db.commit()
+            db.execute("DELETE FROM api_keys WHERE id IN (?,?)", (auth["key_id"], auth["route_key_id"]));db.execute("INSERT INTO oidc_logout_jtis VALUES(?,?)", ("logout", now + 3600));db.commit()
             integrity(db);schema(db);db.close()
         with serve(args.baseline, data) as base:
             assert request(base, "/printed")[2]["Location"] == "https://example.org/after"
@@ -269,11 +288,12 @@ def main():
             assert request(base, "/budget")[0] == 410
             db = sqlite3.connect(data / "linkup.db");integrity(db);schema(db);inventory(data)
             assert db.execute("SELECT count(*) FROM oidc_sessions WHERE id='revoked'").fetchone() == (0,)
-            assert db.execute("SELECT count(*) FROM api_keys WHERE id='deleted-key'").fetchone() == (0,)
+            assert db.execute("SELECT count(*) FROM api_keys WHERE id IN (?,?)", (auth["key_id"], auth["route_key_id"])).fetchone() == (0,)
             assert db.execute("SELECT count(*) FROM oidc_logout_jtis WHERE jti='logout'").fetchone() == (1,)
             assert db.execute("SELECT secret FROM webhooks WHERE id='webhook'").fetchone() == ("synthetic",)
             assert db.execute("SELECT created_by FROM links WHERE id=?", (ids["printed"],)).fetchone() == ("dev-user-id",)
             assert db.execute("SELECT max_clicks,click_count FROM links WHERE id=?", (ids["budget"],)).fetchone() == (1, 1)
+            assert db.execute("SELECT id,slug,created_by,created_at FROM links WHERE id IN (?,?,?,?) ORDER BY id", tuple(ids[name] for name in ("printed", "paused", "deleted", "budget"))).fetchall() == [row for row in original_identity if row[0] != ids["deleted"]]
             db.close()
         oidc_smoke(args.candidate, data, auth, 401)
         oidc_smoke(args.baseline, data, auth, 401)
@@ -283,7 +303,7 @@ def main():
         assert restored.execute("SELECT count(*) FROM links WHERE id=?", (ids["new"],)).fetchone() == (0,)
         assert restored.execute("SELECT target_url FROM links WHERE id=?", (ids["printed"],)).fetchone() == ("https://example.org/first",)
         assert restored.execute("SELECT count(*) FROM oidc_sessions WHERE id='revoked'").fetchone() == (1,)
-        assert restored.execute("SELECT count(*) FROM api_keys WHERE id='deleted-key'").fetchone() == (1,)
+        assert restored.execute("SELECT count(*) FROM api_keys WHERE id=?", (auth["key_id"],)).fetchone() == (1,)
         restored.close();old.close()
         with tempfile.TemporaryDirectory(prefix="linkup-image-") as restore_tmp:
             target_root = Path(restore_tmp);target_root.chmod(0o755)
@@ -291,12 +311,18 @@ def main():
             old = sqlite3.connect("file:" + str(root / "backup.db") + "?mode=ro", uri=True)
             restored = sqlite3.connect(target / "linkup.db");old.backup(restored);restored.close();old.close()
             (target / "linkup.db").chmod(0o666)
-            oidc_smoke(args.baseline, target, {**{k:v for k,v in auth.items() if k != "route_key"}, "api_key":auth["legacy_api_key"]}, 200)
-        print("PASS: exact fixed runtime restart and historical data return over current SQLite, one app writer at a time")
-        print("PROVEN LIMIT: 0.8.0 rejects subject keys and has no SQLite marker; automatic return/publication blocked")
+            oidc_smoke(args.baseline, target, {**{k:v for k,v in auth.items() if k not in ("route_key", "route_key_id")}, "api_key":auth["original_api_key"]}, 200)
+        print("PASS: exact C -> signed B1 image return over current SQLite, one app writer at a time")
         print("PASS: API writes, slugs/owners/seconds, pause/delete, budgets, logout replay IDs and key/session deletions preserved")
         print("PASS: WAL-consistent backup and separate restore integrity/schema; OIDC discovery/login/PKCE smoke")
         print("PROVEN LIMIT: stale restore loses new writes and revives deleted session/key; manual data restore only")
+        if args.report:
+            args.report.write_text(json.dumps({"status":"passed", "baseline":{**baseline,"runtime_id":b1["Id"],"published":True},
+                "candidate":{"runtime_id":c["Id"],"source":c["Config"]["Labels"]["org.opencontainers.image.revision"],"published":False},
+                "data_action":"image-only-current-sqlite", "publication_authorized":json.loads((ROOT / "release/bootstrap-policy.json").read_text())["publication_authorized"],
+                "checks":["WAL backup integrity/schema", "B1/C typed cookie and real key routes", "C-created key usable after B1 return",
+                    "current writes and original link identity preserved", "pause/delete/budget/counters preserved", "key/session/JTI revocations preserved",
+                    "SQLite readiness and discovery/login/PKCE", "separate stale restore proves data loss and credential resurrection"]}, indent=2)+"\n")
 
 
 if __name__ == "__main__":

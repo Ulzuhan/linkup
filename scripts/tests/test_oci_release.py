@@ -24,7 +24,7 @@ class OCITests(unittest.TestCase):
         self.layout = Path(self.tmp.name)
         (self.layout / "blobs/sha256").mkdir(parents=True)
         labels = {"io.kaicorp.linkup.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "org.opencontainers.image.version":oci.policy.release_version(), "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
-                  **oci.policy.BOOTSTRAP_LABELS,
+                  **oci.policy.release_labels(),
                   "io.kaicorp.linkup.auth-contract": "oidc-subject-v2", "io.kaicorp.linkup.readiness-contract":"sqlite-ro-v1"}
         self.config = self.put({"architecture": "amd64", "os": "linux", "config": {"Labels": labels}})
         layer = self.put(b"synthetic layer")
@@ -113,10 +113,17 @@ class OCITests(unittest.TestCase):
 
     def test_historical_rollback_label_is_forbidden_even_on_corrected_runtime(self):
         root=copy.deepcopy(self.root)
-        config=json.loads(oci.blob(self.layout,self.config));config['config']['Labels']['io.kaicorp.linkup.rollback-image']=oci.ROLLBACK
+        config=json.loads(oci.blob(self.layout,self.config));config['config']['Labels']['io.kaicorp.linkup.rollback-image']='ghcr.io/ulzuhan/linkup@sha256:a5290582739571c41f12ce24d8ab1c5967fcd2d62fbb2e1a4854971c3103625f'
         manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
         descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'};root['manifests'][0]=descriptor
         with self.assertRaises(oci.Refused):self.verify(root)
+
+    def test_missing_or_false_compatible_return_labels_are_rejected(self):
+        for label in ('io.kaicorp.linkup.rollback-image','io.kaicorp.linkup.deployment-lane','io.kaicorp.linkup.automatic-return'):
+            root=copy.deepcopy(self.root);config=json.loads(oci.blob(self.layout,self.config));config['config']['Labels'].pop(label)
+            manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
+            descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'};root['manifests'][0]=descriptor
+            with self.subTest(label=label),self.assertRaises(oci.Refused):self.verify(root)
 
     def test_publication_signature_requires_certificate_source_digest_run_and_attempt(self):
         expected='sha256:'+'c'*64

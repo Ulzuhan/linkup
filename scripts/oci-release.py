@@ -85,8 +85,8 @@ def verify(layout, expected, source):
             or labels.get("io.kaicorp.linkup.data-action") != "image-only"
             or labels.get("io.kaicorp.linkup.auth-contract") != "oidc-subject-v2"
             or labels.get("io.kaicorp.linkup.readiness-contract") != "sqlite-ro-v1"
-            or "io.kaicorp.linkup.rollback-image" in labels
-            or any(labels.get(name)!=value for name,value in policy.BOOTSTRAP_LABELS.items())):
+            or any(labels.get(name)!=value for name,value in policy.release_labels().items())
+            or (not policy.bootstrap_policy()["automatic_return"] and "io.kaicorp.linkup.rollback-image" in labels)):
         raise Refused("runtime provenance/rollback contract labels differ")
     return image_id
 

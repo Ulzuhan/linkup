@@ -7,17 +7,29 @@ BASELINE_SOURCE="0f9d99a9099e33375e336092e38d7b1740e8b865"
 REVIEWED_SOURCE="linkup-auth-readiness-v2"
 BOOTSTRAP_LABELS={"io.kaicorp.linkup.deployment-lane":"supervised-bootstrap-v1",
                   "io.kaicorp.linkup.automatic-return":"false"}
+COMPATIBLE_LABELS={"io.kaicorp.linkup.deployment-lane":"compatible-image-return-v1",
+                   "io.kaicorp.linkup.automatic-return":"true"}
 def bootstrap_policy(root=ROOT):
  data=json.loads((root/"release/bootstrap-policy.json").read_text())
  if (set(data)!={"schema","lane","publication_authorized","version","automatic_return","floating_tags"}
      or type(data["schema"]) is not int or data["schema"]!=1
-     or data["lane"]!="supervised-bootstrap-v1"
+     or data["lane"] not in ("supervised-bootstrap-v1","compatible-image-return-v1")
      or type(data["publication_authorized"]) is not bool
-     or data["automatic_return"] is not False or data["floating_tags"] is not False
+     or data["automatic_return"] is not (data["lane"]=="compatible-image-return-v1") or data["floating_tags"] is not False
      or (data["version"] is not None and (type(data["version"]) is not str or not re.fullmatch(r"0\.8\.[1-9][0-9]*",data["version"])))
-     or (data["publication_authorized"] and data["version"] is None)):
-  raise ValueError("invalid reviewed bootstrap policy")
+     or ((data["publication_authorized"] or data["automatic_return"]) and data["version"] is None)):
+  raise ValueError("invalid reviewed release/return policy")
  return data
+def release_labels(root=ROOT):
+ data=bootstrap_policy(root)
+ labels=dict(COMPATIBLE_LABELS if data["automatic_return"] else BOOTSTRAP_LABELS)
+ labels["org.opencontainers.image.version"]=release_version(root)
+ if data["automatic_return"]:
+  baseline=json.loads((root/"release/rollback.json").read_text())
+  if (baseline.get("version")!="0.8.1" or not re.fullmatch(r"sha256:[a-f0-9]{64}",baseline.get("digest",""))
+      or int(data["version"].split(".")[-1])<=1):raise ValueError("reviewed B1 return required")
+  labels["io.kaicorp.linkup.rollback-image"]="ghcr.io/ulzuhan/linkup@"+baseline["digest"]
+ return labels
 def release_version(root=ROOT):
  path=root/"VERSION"
  if path.is_symlink() or not path.is_file():raise ValueError("regular release VERSION file required")
@@ -28,7 +40,7 @@ def release_version(root=ROOT):
 def publication(root=ROOT):
  verify(root)
  data=bootstrap_policy(root)
- if not data["publication_authorized"]:raise ValueError("publication blocked: supervised bootstrap publication is not authorized")
+ if not data["publication_authorized"]:raise ValueError("publication blocked: release publication is not authorized")
  release_version(root)
  if (os.environ.get("GITHUB_REPOSITORY")!="Ulzuhan/linkup"
      or os.environ.get("GITHUB_EVENT_NAME")!="push"
@@ -50,7 +62,7 @@ if __name__=="__main__":
   bootstrap_policy()
   if sys.argv[1:]==["--publication"]:publication()
   elif sys.argv[1:]==["--labels"]:
-   print("\n".join(name+"="+value for name,value in {**BOOTSTRAP_LABELS,"org.opencontainers.image.version":release_version()}.items()))
+   print("\n".join(name+"="+value for name,value in release_labels().items()))
   elif sys.argv[1:]:raise ValueError("unsupported policy arguments")
-  else:print("linkup-sqlite-v1: reviewed auth/readiness correction; supervised bootstrap "+str(bootstrap_policy()["version"]))
+  else:print("linkup-sqlite-v1: frozen auth/readiness behavior; "+bootstrap_policy()["lane"]+" "+str(bootstrap_policy()["version"])+"; publication_authorized="+str(bootstrap_policy()["publication_authorized"]).lower())
  except (ValueError,OSError,KeyError) as error:print(str(error),file=sys.stderr);sys.exit(1)

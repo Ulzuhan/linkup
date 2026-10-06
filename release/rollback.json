@@ -1,8 +1,8 @@
 {
-  "version": "0.8.0",
-  "digest": "sha256:a5290582739571c41f12ce24d8ab1c5967fcd2d62fbb2e1a4854971c3103625f",
-  "source": "0f9d99a9099e33375e336092e38d7b1740e8b865",
-  "run": 36106701737,
+  "version": "0.8.1",
+  "digest": "sha256:8bcc1f3874ec74b5eb1a9704002388ce0a3d63fdee98b47b277e1e79a80e60d5",
+  "source": "39e284e695cecb8671f79a710ef187385b9843c5",
+  "run": 37453232322,
   "attempt": 1,
   "store_contract": "linkup-sqlite-v1"
 }

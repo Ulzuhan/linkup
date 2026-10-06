@@ -21,13 +21,13 @@ class BaselineTests(unittest.TestCase):
                        "head_sha": d["source"], "repository": {"full_name": baseline.REPO},
                        "head_repository": {"full_name": baseline.REPO}}
         self.verified = [{"verificationResult": {"signature": {"certificate": {"runInvocationURI":
-                         f"https://github.com/{baseline.REPO}/actions/runs/{d['run']}/attempts/{d['attempt']}"}},
+                         f"https://github.com/{baseline.REPO}/actions/runs/{d['run']}/attempts/{d['attempt']}", "sourceRepositoryDigest":d['source']}},
                          "statement": {"subject": [{"name": baseline.IMAGE, "digest": {"sha256": d['digest'].split(':')[1]}}]}}}]
 
     def test_reviewed_record_requires_exact_version_digest_source_run_attempt_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "rollback.json"
-            for key, value in (("version", "latest"), ("version", "4.0.0"), ("version", "0.10.0"), ("digest", "sha256:bad"),
+            for key, value in (("version", "latest"), ("version", "0.8.0"), ("version", "4.0.0"), ("version", "0.10.0"), ("digest", "sha256:bad"),
                                ("source", "main"), ("run", True), ("attempt", 0), ("store_contract", "new-store"), ("store_contract", "go-json-v1")):
                 path.write_text(json.dumps(dict(self.data, **{key: value})))
                 with self.subTest(key=key), self.assertRaises(baseline.Refused):
@@ -60,3 +60,7 @@ class BaselineTests(unittest.TestCase):
         bad[0]["verificationResult"]["statement"]["subject"][0]["digest"]["sha256"] = "a" * 64
         with patch.object(baseline, "command", side_effect=[self.record, bad]), self.assertRaises(baseline.Refused):
             baseline.verify(self.data)
+
+    def test_certificate_source_must_match_even_with_correct_invocation(self):
+        bad=copy.deepcopy(self.verified);bad[0]['verificationResult']['signature']['certificate']['sourceRepositoryDigest']='a'*40
+        with patch.object(baseline,'command',side_effect=[self.record,bad]),self.assertRaises(baseline.Refused):baseline.verify(self.data)

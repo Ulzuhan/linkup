@@ -79,8 +79,8 @@ class PersistenceTests(unittest.TestCase):
                 with self.subTest(change=change),self.assertRaises(ValueError):policy.bootstrap_policy(root)
 
     def test_compatible_capability_never_authorizes_publication(self):
-        data=policy.bootstrap_policy()
+        data=dict(policy.bootstrap_policy(),publication_authorized=False)
         self.assertTrue(data['automatic_return']);self.assertFalse(data['publication_authorized'])
         self.assertEqual(policy.release_labels()['io.kaicorp.linkup.rollback-image'], 'ghcr.io/ulzuhan/linkup@'+json.loads((ROOT/'release/rollback.json').read_text())['digest'])
         env={'GITHUB_REF':'refs/tags/v'+data['version'],'GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
-        with patch.dict(os.environ,env,clear=True),self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()
+        with patch.object(policy,'bootstrap_policy',return_value=data),patch.dict(os.environ,env,clear=True),self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()

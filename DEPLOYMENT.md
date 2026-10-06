@@ -232,5 +232,6 @@ remain valid. Historical OIDC API keys need reissue from a verified login becaus
 the old rows cannot safely distinguish subject from a mutable login name.
 The supervised B1 0.8.1 cutover is complete. C 0.8.2 prepares compatible image
 return to that exact signed B1 without changing production behavior or schema.
-Publication remains explicitly blocked; the normal infra gate, host handoff
-and automation require later approval. See [the contract and limits](release/README.md).
+Publication is authorized only for the exact reviewed v0.8.2 tag; the normal
+infra gate, host handoff and automation require the authorized supervised
+sequence and its operational checks. See [the contract and limits](release/README.md).

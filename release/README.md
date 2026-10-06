@@ -3,8 +3,9 @@
 The 0.8.2 candidate prepares an image-return contract with the deployed, signed
 0.8.1 baseline. Production Go, dependencies, UI, Dockerfile and SQLite schema
 are unchanged. This maintenance candidate supplies the reviewed release bytes
-needed to rehearse B1/C; it adds no application feature. Publication, merge,
-host handoff and activation are pending approval.
+needed to rehearse B1/C; it adds no application feature. Publication is authorized
+only for the exact 0.8.2 tag. Supervised host operation and automation remain
+subject to successful publication, signed-image rehearsal and operational gates.
 Functional CI builds and scans one linux/amd64 OCI, executes its hashed runtime,
 archives its provenance/SBOM and verifies transferred bytes. Trivy still blocks
 fixable HIGH/CRITICAL vulnerabilities. No image is rebuilt at publication.
@@ -64,16 +65,16 @@ never selected as the compatible return image.
 
 The existing reviewed `bootstrap-policy.json` now selects the separate
 `compatible-image-return-v1` lane, version0.8.2, `automatic_return=true`,
-`publication_authorized=false` and `floating_tags=false`. In this lane,
+`publication_authorized=true` and `floating_tags=false`. In this lane,
 automatic-return expresses a technical capability: return only the image to
 the exact B1 digest over current SQLite, with the same configuration and one
 application writer at a time. It grants no operational permission. The OCI
 must declare that lane, capability and exact `rollback-image` B1. Actual B1
 labels must not be rewritten to imitate C.
 
-The publication gate refuses even an exact canonical version-tag push while
-publication_authorized is false, before registry login or candidate/promote
-registry access. CLI/environment overrides cannot authorize it. The direct
+Publication requires the exact canonical v0.8.2 tag push and source. When the
+reviewed publication_authorized flag is false, even that exact push is blocked
+before registry login or candidate/promote registry access. CLI/environment overrides cannot authorize it. The direct
 shell publisher remains verification-only. CI stores the scanned OCI as an
 Actions artifact; it creates no registry candidate, version tag, release or
 floating alias. A future authorized publisher must reuse verified bytes and
@@ -86,7 +87,7 @@ return, writes and revocations, readiness and a separate stale-restore negative
 control. The infra Compose rehearsal reuses that same OCI without rebuild.
 C release admission is explicitly simulated there; B1 signature is real.
 The infra wrapper keeps BOOTSTRAP_REQUIRED=True and installed LinkUp timers
-remain absent/inactive. Handoff and operation require later approval.
+remain absent/inactive. Handoff and operation require the separately authorized supervised checks.
 
 Backups contain hashed keys, encrypted access tokens, sessions and webhook
 secrets and require private handling. A consistent backup includes committed

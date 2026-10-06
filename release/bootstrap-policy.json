@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "lane": "compatible-image-return-v1",
-  "publication_authorized": false,
+  "publication_authorized": true,
   "version": "0.8.2",
   "automatic_return": true,
   "floating_tags": false

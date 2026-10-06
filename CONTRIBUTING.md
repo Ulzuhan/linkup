@@ -61,9 +61,10 @@ days under `linkup-oci-<run-id>` and reverified after transfer. Only the tag
 publisher gets registry/signing permissions after these gates; it copies the
 same bytes, verifies signed source/tag/run/attempt and promotes only the reviewed
 version without rebuilding or moving floating aliases. The reviewed manifest
-prepares 0.8.2 compatible return capability but blocks publication even for the
-exact canonical tag push (`publication_authorized=false`). Synthetic tests
-never authorize publication, merge, handoff or host operation. B1 keeps its
+authorizes publication only for the exact canonical v0.8.2 tag push
+(`publication_authorized=true`), separately from compatible return capability.
+The negative publication-disabled fixture still blocks before registry access.
+Synthetic tests never authorize merge, handoff or host operation. B1 keeps its
 actual bootstrap labels; C must declare its exact B1 rollback digest.
 
 The rehearsal uses CI-only `python3-cryptography` from the runner's distribution

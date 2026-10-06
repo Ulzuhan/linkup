@@ -49,7 +49,7 @@ page/row integrity. Backups require separate integrity/schema checks.
 ## The historical baseline is not an automatic return target
 
 `rollback.json` still records the real signed0.8.0 release for a historical
-negative control. It has the same DDL but cannot authorize typed subject keys
+negative control. It has the same DDL but does not enforce typed subject ownership
 and its router-only health response lacks the SQLite marker. Exact-image CI
 proves these incompatibilities, real new-key routes, SQLite failures and current
 synthetic data preservation. It does not call that old pair compatible.
@@ -91,13 +91,19 @@ group denies access. API keys do not gain group administration in either case.
 This bounds current behavior; consulting UserInfo alone does not prove fresh
 group membership. Supabase Auth v2.197.0 checks JWT/user/session for UserInfo,
 but does not check revoked consent in that route. The deployed account admin
-path revokes consent without deleting provider sessions. Real permission-change
-tests or a reviewed projection change are prerequisites for stronger guarantees.
+path revokes consent without deleting provider sessions. This fallback is
+unchanged from the signed B0 source; it is not a new B1 regression. Its
+conditional impact and unmeasured runtime limits are tracked in the separate
+[OIDC follow-up](oidc-followups.md). A real permission-change test is not a
+default CD prerequisite. Stronger revocation guarantees need their own reviewed
+contract and validation; the typed-key/readiness and deployment gates remain.
 
 The infra first-jump rehearsal uses the signed historical B0 as origin and this
 exact unpublished OCI as B1. B0 cannot be last-good for typed keys/readiness.
 The supervised controller journals forward-only recovery and preserves current
 SQLite; failures do not activate B0 or restore a backup. Unpublished B1 admission
-is an explicit fixture. Publication, live cutover, real key reissue and eventual
-handoff to a signed B1 baseline each require their own reviewed evidence.
+is an explicit fixture. Publication, live cutover and eventual handoff to a
+signed B1 baseline each require their own reviewed evidence. Real key reissue
+is needed only when historical stored keys exist; a zero-key aggregate is not
+an exhaustive inventory of external consumers or proof of database integrity.
 Later automatic image updates still need a real compatible signed pair.

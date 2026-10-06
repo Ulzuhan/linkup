@@ -145,6 +145,11 @@ v2.197.0 UserInfo checks user/session but does not consult revoked consent, whil
 the account admin group-removal path only revokes consent. That path alone does
 not prove immediate denial of an existing access token.
 
+This group fallback is inherited from the signed 0.8.0 baseline. The
+[separate OIDC follow-up](release/oidc-followups.md) records source evidence,
+conditional impact and unmeasured runtime limits. A real permission-change
+experiment is not a default requirement of the prepared deployment lane.
+
 UserInfo errors, an unavailable provider, no usable group projection, a different
 subject, expired tokens or missing local session records deny access. Each
 check has a five-second request deadline; already-authorized

@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Ulzuhan/linkup/internal/config"
 	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/Ulzuhan/linkup/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
 type APIKeyHandler struct {
+	cfg           *config.Config
 	apiKeyService *services.APIKeyService
 	authService   *services.AuthService
 }
 
-func NewAPIKeyHandler(apiKeyService *services.APIKeyService, authService *services.AuthService) *APIKeyHandler {
+func NewAPIKeyHandler(cfg *config.Config, apiKeyService *services.APIKeyService, authService *services.AuthService) *APIKeyHandler {
 	return &APIKeyHandler{
+		cfg:           cfg,
 		apiKeyService: apiKeyService,
 		authService:   authService,
 	}
@@ -49,7 +52,11 @@ func (h *APIKeyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, rawSecret, err := h.apiKeyService.Create(req.Name, session.UserID)
+	create := h.apiKeyService.Create
+	if h.cfg.IsOIDCConfigured() {
+		create = h.apiKeyService.CreateOIDC
+	}
+	apiKey, rawSecret, err := create(req.Name, session.UserID)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

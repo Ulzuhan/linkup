@@ -5,6 +5,26 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-06
+
+### Fixed
+
+- OIDC API keys use server-generated typed subject IDs and exact key/session
+  revalidation. Historical untyped OIDC keys fail closed and need reissue if
+  present; standalone key behavior and the SQLite schema remain unchanged.
+- `/healthz` verifies SQLite readiness with a fresh read-only connection;
+  `/health` retains HTTP liveness. Readiness does not establish write access,
+  free space or full database integrity.
+
+### Changed
+
+- Publish the scanned and tested OCI without rebuilding, with exact source,
+  version and signed workflow run/attempt verification. This first corrected
+  image uses the supervised bootstrap lane, with no floating tags or automatic
+  return to 0.8.0. Deployment and automation activation require separate review.
+- Track the inherited JWT group-projection limit separately. This release does
+  not claim immediate group or consent revocation.
+
 ## [0.8.0] - 2026-09-25
 
 ### Changed

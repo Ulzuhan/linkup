@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -15,6 +16,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const OIDCSubjectKeyPrefix = "oidc-subject-v2:"
+
 type APIKeyService struct {
 	db      *database.DB
 	isAdmin func(string) bool
@@ -26,6 +29,16 @@ func NewAPIKeyService(db *database.DB, isAdmin func(string) bool) *APIKeyService
 
 // Create generates a new secret API key and stores its SHA-256 hash
 func (s *APIKeyService) Create(name, username string) (*models.APIKey, string, error) {
+	return s.create(name, username, false)
+}
+
+// CreateOIDC persists the owner type in a server-generated opaque ID. This
+// distinguishes subject ownership without DDL or trusting client metadata.
+func (s *APIKeyService) CreateOIDC(name, subject string) (*models.APIKey, string, error) {
+	return s.create(name, subject, true)
+}
+
+func (s *APIKeyService) create(name, username string, oidc bool) (*models.APIKey, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		name = "Default API Key"
@@ -47,6 +60,10 @@ func (s *APIKeyService) Create(name, username string) (*models.APIKey, string, e
 		KeyPrefix: keyPrefix,
 		KeyHash:   keyHash,
 		CreatedAt: time.Now().Unix(),
+	}
+
+	if oidc {
+		apiKey.ID = OIDCSubjectKeyPrefix + apiKey.ID
 	}
 
 	query := `INSERT INTO api_keys (id, user_id, name, key_prefix, key_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)`
@@ -130,20 +147,22 @@ func (s *APIKeyService) ValidateKey(token string) (*models.UserSession, error) {
 		return nil, err
 	}
 
-	// Update last used timestamp in background
-	go func() {
-		now := time.Now().Unix()
-		_, _ = s.db.Exec(`UPDATE api_keys SET last_used_at = ? WHERE id = ?`, now, keyID)
-	}()
+	// Best-effort metadata stays within this request rather than a detached
+	// writer that can race database shutdown. It grants no authorization.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, _ = s.db.ExecContext(ctx, `UPDATE api_keys SET last_used_at = ? WHERE id = ?`, time.Now().Unix(), keyID)
+	cancel()
 
 	isAdmin := s.isAdmin(userID)
 
 	return &models.UserSession{
-		UserID:    userID,
-		Username:  userID,
-		Email:     userID,
-		IsAdmin:   isAdmin,
-		CreatedAt: time.Now().Unix(),
+		UserID:     userID,
+		Username:   userID,
+		Email:      userID,
+		IsAdmin:    isAdmin,
+		CreatedAt:  time.Now().Unix(),
+		APIKeyID:   keyID,
+		APIKeyHash: keyHash,
 	}, nil
 }
 

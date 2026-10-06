@@ -126,6 +126,9 @@ type UserSession struct {
 	Groups    []string `json:"groups,omitempty"`
 	IsAdmin   bool     `json:"is_admin"`
 	CreatedAt int64    `json:"created_at"`
+	// Only ValidateKey supplies these; they are never accepted from cookies.
+	APIKeyID   string `json:"-"`
+	APIKeyHash string `json:"-"`
 }
 
 type BlockedDomain struct {

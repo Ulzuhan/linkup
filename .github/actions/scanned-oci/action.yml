@@ -1,41 +1,64 @@
 name: Build and verify the scanned OCI artifact
-description: One OCI build with attestations, security scan and digest verification; never publishes
-
+description: One OCI, functional runtime return over current SQLite, scan and byte verification; never publishes
 inputs:
   labels:
-    description: Image metadata labels, passed directly to BuildKit
+    description: Additional metadata labels
     required: false
     default: ''
-
 outputs:
   digest:
-    description: Digest of the exact scanned OCI artifact
+    description: Exact tested and scanned OCI index
     value: ${{ steps.build.outputs.digest }}
   layout:
-    description: Local OCI layout directory
+    description: OCI layout
     value: ${{ runner.temp }}/linkup.oci
-
+  source:
+    description: Exact checked out source
+    value: ${{ steps.source.outputs.sha }}
 runs:
   using: composite
   steps:
-    - name: Set up Buildx
-      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-    - name: Build the release artifact once
-      id: build
+    - id: source
+      shell: bash
+      run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+    - id: rollback
+      name: Verify the exact signed rollback pair
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: echo "image=$(python3 scripts/rollback-baseline.py verify)" >> "$GITHUB_OUTPUT"
+    - name: Block production Go and persistence changes pending manual review
+      shell: bash
+      run: python3 scripts/persistence-policy.py
+    - id: bootstrap
+      name: Derive the closed supervised bootstrap contract
+      shell: bash
+      run: |
+        echo 'labels<<LINKUP_BOOTSTRAP_LABELS' >> "$GITHUB_OUTPUT"
+        python3 scripts/persistence-policy.py --labels >> "$GITHUB_OUTPUT"
+        echo 'LINKUP_BOOTSTRAP_LABELS' >> "$GITHUB_OUTPUT"
+    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+    - id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         context: .
         platforms: linux/amd64
         outputs: type=oci,dest=${{ runner.temp }}/linkup.oci,tar=false
         tags: linkup:release-candidate
-        labels: ${{ inputs.labels }}
+        labels: |
+          ${{ inputs.labels }}
+          org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+          io.kaicorp.linkup.store-contract=linkup-sqlite-v1
+          io.kaicorp.linkup.data-action=image-only
+          io.kaicorp.linkup.auth-contract=oidc-subject-v2
+          io.kaicorp.linkup.readiness-contract=sqlite-ro-v1
+          ${{ steps.bootstrap.outputs.labels }}
         provenance: mode=max
         sbom: true
         cache-from: type=gha
         cache-to: type=gha,mode=max
-
-    - name: Scan the OCI layout (fixable HIGH/CRITICAL block release)
+        no-cache: ${{ startsWith(github.ref, 'refs/tags/') }}
+    - name: Trivy before any registry write, unchanged blocking policy
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         input: ${{ runner.temp }}/linkup.oci
@@ -45,19 +68,39 @@ runs:
         exit-code: '1'
         severity: HIGH,CRITICAL
         ignore-unfixed: true
-
-    - name: Install OCI copier
+      env:
+        TRIVY_TIMEOUT: 20m
+    - name: Install isolated rehearsal and OCI inspection tools
       shell: bash
       run: |
         sudo apt-get update -qq
-        sudo apt-get install --no-install-recommends -y skopeo
-
-    - name: Verify the exact layout digest without registry access
+        sudo apt-get install --no-install-recommends -y skopeo sqlite3 python3-cryptography
+    - id: runtime
+      name: Verify every OCI byte and load the exact config ID
       shell: bash
-      env:
-        RELEASE_LAYOUT: ${{ runner.temp }}/linkup.oci
-        RELEASE_DIGEST: ${{ steps.build.outputs.digest }}
       run: |
-        export RELEASE_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
-        export RELEASE_TAGS="${RELEASE_REPOSITORY}:verification-only"
-        bash scripts/publish-scanned-image.sh --verify-only
+        image_id=$(python3 scripts/oci-release.py load --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
+        echo "LINKUP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
+    - name: Exact fixed runtime, real key routes, SQLite readiness and historical negative return
+      shell: bash
+      run: sudo python3 scripts/image-rehearsal.py --candidate "$LINKUP_TEST_IMAGE" --baseline '${{ steps.rollback.outputs.image }}'
+    - name: Default runtime identity is uid 10001
+      shell: bash
+      run: docker run --rm --entrypoint sh "$LINKUP_TEST_IMAGE" -c 'test "$(id -u)" = 10001'
+    - name: Archive exact layout for byte-preserving transfer
+      shell: bash
+      run: |
+        python3 scripts/oci-release.py verify --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}'
+        tar -C "$RUNNER_TEMP" -cf "$RUNNER_TEMP/linkup-oci.tar" linkup.oci
+        printf '%s\n' '${{ steps.source.outputs.sha }}' > "$RUNNER_TEMP/linkup-oci-source.txt"
+        printf '%s\n' '${{ steps.build.outputs.digest }}' > "$RUNNER_TEMP/linkup-oci-digest.txt"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: linkup-oci-${{ github.run_id }}
+        path: |
+          ${{ runner.temp }}/linkup-oci.tar
+          ${{ runner.temp }}/linkup-oci-source.txt
+          ${{ runner.temp }}/linkup-oci-digest.txt
+        compression-level: 0
+        retention-days: 7
+        if-no-files-found: error

@@ -129,6 +129,10 @@ runs:
                             break
                     except Exception:
                         if time.monotonic() >= deadline:
+                            state = subprocess.run(["docker", "inspect", "--format", "{{.State.Status}} exit={{.State.ExitCode}}", cid], capture_output=True, text=True)
+                            logs = subprocess.run(["docker", "logs", cid], capture_output=True, text=True)
+                            print("arm64 container state:", state.stdout.strip(), state.stderr.strip())
+                            print("arm64 container logs:\n" + logs.stdout + logs.stderr)
                             raise RuntimeError("arm64 linkup runtime /healthz timeout")
                         time.sleep(0.2)
             finally:

@@ -19,8 +19,8 @@ RUN go mod download
 COPY . .
 
 # Compile optimized static Go binary (pure Go, CGO disabled)
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-s -w -extldflags '-static'" \
     -trimpath \

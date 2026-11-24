@@ -41,6 +41,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if session, err := h.authService.GetSession(r); err == nil && session != nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
 	authURL, err := h.authService.GetAuthURL(w)
 	if err != nil {
 		log.Printf("[AUTH] Failed to initiate OIDC flow: %v", err)
@@ -77,7 +82,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.authService.ClearSessionCookie(w)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/?signed_out=1", http.StatusSeeOther)
 }
 
 // BackchannelLogout accepts only a signed OIDC logout token, never a browser cookie.

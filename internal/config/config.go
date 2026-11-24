@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ type Config struct {
 	OIDCRedirectURI     string
 	EnrollURL           string
 	AccountURL          string
+	AccountSessionURL   string
 	DBPath              string
 	QRForgeURL          string
 	AdminUsers          map[string]bool
@@ -102,6 +104,7 @@ func Load() *Config {
 	oidcRedirectURI := getEnv("LINKUP_OIDC_REDIRECT_URI", "http://localhost:3464/auth/callback")
 	enrollURL := getEnv("LINKUP_ENROLL_URL", "")
 	accountURL := getEnv("LINKUP_ACCOUNT_URL", "")
+	accountSessionURL := strings.TrimSpace(getEnv("LINKUP_ACCOUNT_SESSION_URL", ""))
 
 	// Whether the footer links to the other KaiCorp Labs tools. Off unless the
 	// operator asks for it: in somebody else's deployment those links are
@@ -144,6 +147,7 @@ func Load() *Config {
 		OIDCRedirectURI:     oidcRedirectURI,
 		EnrollURL:           enrollURL,
 		AccountURL:          accountURL,
+		AccountSessionURL:   accountSessionURL,
 		FooterLinks:         footerLinks,
 		DBPath:              dbPath,
 		QRForgeURL:          strings.TrimRight(qrForgeURL, "/"),
@@ -208,6 +212,38 @@ func recortarDiscovery(raw string) string {
 
 func (c *Config) IsOIDCConfigured() bool {
 	return c.OIDCIssuerURL != "" && c.OIDCClientID != ""
+}
+
+func validateExternalURL(raw string) (string, string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Host == "" {
+		return "", ""
+	}
+	loopback := u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost" || u.Hostname() == "::1"
+	if u.Scheme != "https" && !(loopback && u.Scheme == "http") {
+		return "", ""
+	}
+	return u.String(), u.Scheme + "://" + u.Host
+}
+
+func (c *Config) ValidAccountSessionURL() string {
+	if c == nil || !c.IsOIDCConfigured() {
+		return ""
+	}
+	full, _ := validateExternalURL(c.AccountSessionURL)
+	return full
+}
+
+func (c *Config) AccountSessionOrigin() string {
+	if c == nil || !c.IsOIDCConfigured() {
+		return ""
+	}
+	_, origin := validateExternalURL(c.AccountSessionURL)
+	return origin
 }
 
 // IsAdmin resolves administration from the provider's groups when a group is

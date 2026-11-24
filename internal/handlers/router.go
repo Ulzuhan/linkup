@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/Ulzuhan/linkup/internal/config"
 	"github.com/Ulzuhan/linkup/internal/database"
+	"github.com/Ulzuhan/linkup/internal/models"
 	"github.com/Ulzuhan/linkup/internal/services"
 	"github.com/Ulzuhan/linkup/internal/web"
 	"github.com/go-chi/chi/v5"
@@ -29,9 +33,9 @@ func NewRouter(
 	r := chi.NewRouter()
 
 	// Base middlewares
-	r.Use(middleware.Recoverer)
+	r.Use(Recoverer(renderer, cfg))
 	r.Use(PrivacyRespectingLogger)
-	r.Use(SecurityHeaders)
+	r.Use(SecurityHeadersFor(cfg))
 
 	// Static assets.
 	//
@@ -149,7 +153,77 @@ func NewRouter(
 	// Fast Redirection Route (Catch-all slug)
 	r.Get("/{slug}", redirectHandler.Redirect)
 
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("{\"error\":\"not_found\"}\n"))
+			return
+		}
+		user := models.UserSession{}
+		if authService != nil {
+			if s, err := authService.GetSession(r); err == nil && s != nil {
+				user = *s
+			}
+		}
+		qrForgeURL := ""
+		if cfg != nil {
+			qrForgeURL = cfg.QRForgeURL
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNotFound)
+		_ = renderer.Render(w, "error.html", map[string]interface{}{
+			"User":       user,
+			"Title":      "Page Not Found",
+			"Heading":    "404 - Page Not Found",
+			"Headline":   "This page does not exist",
+			"Message":    "The page you requested does not exist.",
+			"StatusCode": 404,
+			"QRForgeURL": qrForgeURL,
+		})
+	})
+
 	return r
+}
+
+// Recoverer catches panics cleanly with JSON for API requests and branded HTML
+// for web routes instead of leaking stack traces or plain empty responses.
+func Recoverer(renderer *web.Renderer, cfg *config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					log.Printf("[PANIC] %s %s: %v\n%s", r.Method, r.URL.Path, rec, debug.Stack())
+					if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+						w.Header().Set("Content-Type", "application/json; charset=utf-8")
+						w.Header().Set("Cache-Control", "no-store")
+						w.WriteHeader(http.StatusInternalServerError)
+						_ = json.NewEncoder(w).Encode(map[string]string{"error": "internal_server_error"})
+						return
+					}
+					qrForgeURL := ""
+					if cfg != nil {
+						qrForgeURL = cfg.QRForgeURL
+					}
+					w.Header().Set("Content-Type", "text/html; charset=utf-8")
+					w.Header().Set("Cache-Control", "no-store")
+					w.WriteHeader(http.StatusInternalServerError)
+					_ = renderer.Render(w, "error.html", map[string]interface{}{
+						"User":       models.UserSession{},
+						"Title":      "Something went wrong",
+						"Heading":    "500 - Internal Server Error",
+						"Headline":   "Something went wrong",
+						"Message":    "We hit an unexpected problem loading this page. Try reloading in a moment.",
+						"StatusCode": 500,
+						"QRForgeURL": qrForgeURL,
+					})
+				}
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // PrivacyRespectingLogger logs request method, path, status and duration without recording visitor IP or Referrers
@@ -192,18 +266,28 @@ const contentSecurityPolicy = "default-src 'self'; " +
 	"frame-ancestors 'none'"
 
 func SecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		// DENY rather than SAMEORIGIN: nothing here is meant to be framed, and
-		// frame-ancestors 'none' above says the same to browsers that read CSP.
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		w.Header().Set("Permissions-Policy",
-			"camera=(), microphone=(), geolocation=(), payment=(), usb=()")
-		// X-XSS-Protection is deliberately absent. It is obsolete, browsers
-		// ignore it, and in the versions that did not it introduced its own
-		// vulnerabilities. CSP is what does this job now.
-		next.ServeHTTP(w, r)
-	})
+	return SecurityHeadersFor(nil)(next)
+}
+
+func SecurityHeadersFor(cfg *config.Config) func(http.Handler) http.Handler {
+	csp := contentSecurityPolicy
+	if origin := cfg.AccountSessionOrigin(); origin != "" {
+		csp = strings.Replace(csp, "connect-src 'self'", "connect-src 'self' "+origin, 1)
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Security-Policy", csp)
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			// DENY rather than SAMEORIGIN: nothing here is meant to be framed, and
+			// frame-ancestors 'none' above says the same to browsers that read CSP.
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("Permissions-Policy",
+				"camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+			// X-XSS-Protection is deliberately absent. It is obsolete, browsers
+			// ignore it, and in the versions that did not it introduced its own
+			// vulnerabilities. CSP is what does this job now.
+			next.ServeHTTP(w, r)
+		})
+	}
 }

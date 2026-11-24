@@ -1,5 +1,5 @@
 {{define "content"}}
-<div class="landing" id="landing">
+<div class="landing" id="landing"{{if .AccountSessionURL}} data-session-url="{{.AccountSessionURL}}"{{end}}>
   <section class="land-hero">
     <div class="drops" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="container land-hero-grid">
@@ -7,11 +7,11 @@
         <span class="eyebrow">Self-hosted · 0 visitors identified</span>
         <h1 class="land-h1">A short link that <span class="ember-text">does not watch</span> who clicks it.</h1>
         <p class="land-lede">Most shorteners are surveillance with a convenience feature attached. This one keeps the convenience: it strips the tracking parameters from your destination, leaves the ones the page needs, and never reads the address of the person who clicked.</p>
-        <div class="land-cta">
+        <div class="land-cta" data-session-cta>
           {{if .EnrollURL}}<a href="{{.EnrollURL}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-user-plus"/></svg>Request an account</a>{{end}}
           <a href="/auth/login" class="btn {{if .EnrollURL}}btn-outline{{else}}btn-primary{{end}} btn-lg"><svg aria-hidden="true"><use href="#i-login"/></svg>Sign in</a>
         </div>
-        <div class="land-fine">
+        <div class="land-fine" data-session-fine>
           <span>Got a short link instead? Open it. Nothing about you is read on the way through.</span>
           <span><a href="https://github.com/Ulzuhan/linkup" target="_blank" rel="noopener">Source on GitHub</a> · one static binary, run your own.</span>
         </div>
@@ -122,7 +122,7 @@
         <a href="/" class="brand" aria-label="LinkUp"><svg class="brand-mark" aria-hidden="true"><use href="#mark"/></svg><span class="brand-name">LinkUp</span></a>
         <h2>Use this one, or run your own</h2>
         <p>Accounts here are approved one by one by a person. The service is one static binary with its dashboard inside and a SQLite file: built from a tagged commit, scanned before release, published with provenance.</p>
-        <div class="land-cta land-cta-center">
+        <div class="land-cta land-cta-center" data-session-close-cta>
           <a href="{{if .EnrollURL}}{{.EnrollURL}}{{else}}/auth/login{{end}}" class="btn btn-primary btn-lg"{{if .EnrollURL}} target="_blank" rel="noopener"{{end}}>{{if .EnrollURL}}<svg aria-hidden="true"><use href="#i-user-plus"/></svg>Request an account{{else}}<svg aria-hidden="true"><use href="#i-login"/></svg>Sign in{{end}}</a>
           <a href="https://github.com/Ulzuhan/linkup" class="btn btn-outline btn-lg" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-github"/></svg>Source on GitHub</a>
         </div>

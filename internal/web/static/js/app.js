@@ -880,8 +880,26 @@
       .catch(() => {});
   }
 
+  /* ── App Switcher popover ARIA sync ─────────────────────────────────── */
+  function setupAppSwitcher() {
+    const panel = $('#kc-app-switcher');
+    const btn = $('[popovertarget="kc-app-switcher"]');
+    if (!panel || !btn) return;
+    on(panel, 'toggle', (event) => {
+      btn.setAttribute('aria-expanded', event.newState === 'open' ? 'true' : 'false');
+    });
+    if (!Object.hasOwn(HTMLElement.prototype, 'popover')) {
+      on(btn, 'click', () => {
+        const nextOpen = !panel.classList.contains(':popover-open');
+        panel.classList.toggle(':popover-open', nextOpen);
+        btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+      });
+    }
+  }
+
   /* ── Go ─────────────────────────────────────────────────────────────── */
   function init() {
+    setupAppSwitcher();
     setupSegments();
     setupTheme();
     setupAccountMenu();

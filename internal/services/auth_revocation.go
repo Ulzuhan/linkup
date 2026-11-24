@@ -34,7 +34,7 @@ func (a *AuthService) authorizeWithProvider(ctx context.Context, provider *oidc.
 	if !token.Valid() {
 		return errAccessRevoked
 	}
-	info, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
+	info, err := provider.UserInfo(a.oidcCtx(ctx), oauth2.StaticTokenSource(token))
 	if err != nil {
 		// Do not include a provider's error body (which could contain credentials).
 		return errors.New("could not verify current OIDC authorization")
@@ -219,8 +219,8 @@ func (a *AuthService) BackchannelLogout(ctx context.Context, raw string) error {
 	}
 	// Validate required exp explicitly with iat after signature/audience checks.
 	// Back-Channel Logout 1.0 errata set 1 requires expiration, like an ID token.
-	verifier := provider.Verifier(&oidc.Config{ClientID: a.cfg.OIDCClientID, SkipIssuerCheck: a.cfg.OIDCInternalBase != "", SkipExpiryCheck: true})
-	token, err := verifier.Verify(ctx, raw)
+	verifier := provider.Verifier(&oidc.Config{ClientID: a.cfg.OIDCClientID, SkipIssuerCheck: a.cfg.OIDCInternalBase != "", SkipExpiryCheck: true, SupportedSigningAlgs: []string{oidc.RS256, oidc.ES256}})
+	token, err := verifier.Verify(a.oidcCtx(ctx), raw)
 	if err != nil || !emisorValido(token.Issuer, a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase) {
 		return errAccessRevoked
 	}

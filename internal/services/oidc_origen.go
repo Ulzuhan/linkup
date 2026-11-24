@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -29,6 +30,9 @@ import (
 func descubrirProveedor(ctx context.Context, issuer, internalBase string) (*oidc.Provider, error) {
 	if internalBase == "" {
 		return oidc.NewProvider(ctx, issuer)
+	}
+	if cliente, err := clienteInternoOIDC(issuer, internalBase); err == nil && cliente != nil {
+		ctx = oidc.ClientContext(ctx, cliente)
 	}
 
 	interno, err := enOrigen(issuer, internalBase)
@@ -122,4 +126,46 @@ func enOrigen(destino, origen string) (string, error) {
 		u.Host = o.Hostname() + ":" + o.Port()
 	}
 	return u.String(), nil
+}
+
+type transporteInternoOIDC struct {
+	publicoScheme string
+	publicoHost   string
+	interno       *url.URL
+	base          http.RoundTripper
+}
+
+func (t *transporteInternoOIDC) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL != nil && strings.EqualFold(req.URL.Scheme, t.publicoScheme) && strings.EqualFold(req.URL.Host, t.publicoHost) {
+		r2 := req.Clone(req.Context())
+		u := *req.URL
+		u.Scheme = t.interno.Scheme
+		u.Host = t.interno.Host
+		r2.URL = &u
+		r2.Host = t.interno.Host
+		return t.base.RoundTrip(r2)
+	}
+	return t.base.RoundTrip(req)
+}
+
+func clienteInternoOIDC(issuer, internalBase string) (*http.Client, error) {
+	if internalBase == "" {
+		return nil, nil
+	}
+	pub, err := url.Parse(issuer)
+	if err != nil || pub.Scheme == "" || pub.Host == "" {
+		return nil, fmt.Errorf("invalid OIDC issuer %q", issuer)
+	}
+	interno, err := url.Parse(internalBase)
+	if err != nil || interno.Scheme == "" || interno.Host == "" {
+		return nil, fmt.Errorf("LINKUP_OIDC_INTERNAL_BASE is not a usable URL: %q", internalBase)
+	}
+	return &http.Client{
+		Transport: &transporteInternoOIDC{
+			publicoScheme: pub.Scheme,
+			publicoHost:   pub.Host,
+			interno:       interno,
+			base:          http.DefaultTransport,
+		},
+	}, nil
 }

@@ -17,36 +17,67 @@ SPEC.loader.exec_module(oci)
 SOURCE = "b" * 40
 
 
+def make_layout(base, arch="amd64", source=SOURCE, label_overrides=None):
+    (base / "blobs/sha256").mkdir(parents=True, exist_ok=True)
+    def put(value):
+        data = value if isinstance(value, bytes) else json.dumps(value).encode()
+        digest = hashlib.sha256(data).hexdigest()
+        (base / "blobs/sha256" / digest).write_bytes(data)
+        return {"digest": "sha256:" + digest, "size": len(data)}
+    labels = {
+        "io.kaicorp.linkup.data-action": "image-only",
+        "org.opencontainers.image.revision": source,
+        "org.opencontainers.image.version": oci.policy.release_version(),
+        "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
+        **oci.policy.release_labels(),
+        "io.kaicorp.linkup.auth-contract": "oidc-subject-v2",
+        "io.kaicorp.linkup.readiness-contract": "sqlite-ro-v1",
+    }
+    if label_overrides:
+        labels.update(label_overrides)
+    config = put({"architecture": arch, "os": "linux", "config": {"Labels": labels}})
+    layer = put(f"synthetic layer {arch}".encode())
+    runtime = put({"config": config, "layers": [layer]})
+    runtime["platform"] = {"architecture": arch, "os": "linux"}
+    attestation = put({"config": put({}), "layers": [
+        put({"predicateType": "https://slsa.dev/provenance/v0.2"}),
+        put({"predicateType": "https://spdx.dev/Document"}),
+    ]})
+    attestation["platform"] = {"architecture": "unknown", "os": "unknown"}
+    attestation["annotations"] = {
+        "vnd.docker.reference.type": "attestation-manifest",
+        "vnd.docker.reference.digest": runtime["digest"],
+    }
+    root = {"schemaVersion": 2, "mediaType": "application/vnd.oci.image.index.v1+json", "manifests": [runtime, attestation]}
+    root_desc = put(root)
+    root_desc["mediaType"] = "application/vnd.oci.image.index.v1+json"
+    (base / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}\n')
+    (base / "index.json").write_text(json.dumps({"schemaVersion": 2, "mediaType": "application/vnd.oci.image.index.v1+json", "manifests": [root_desc]}))
+    return config, root, root_desc["digest"], put
+
+
+def fake_inspect(*args):
+    assert args[:3] == ("skopeo", "inspect", "--raw")
+    layout = Path(args[3].removeprefix("oci:"))
+    index = json.loads((layout / "index.json").read_text())
+    digest = index["manifests"][0]["digest"].split(":")[1]
+    return (layout / "blobs/sha256" / digest).read_bytes()
+
+
 class OCITests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.layout = Path(self.tmp.name)
-        (self.layout / "blobs/sha256").mkdir(parents=True)
-        labels = {"io.kaicorp.linkup.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "org.opencontainers.image.version":oci.policy.release_version(), "io.kaicorp.linkup.store-contract": "linkup-sqlite-v1",
-                  **oci.policy.release_labels(),
-                  "io.kaicorp.linkup.auth-contract": "oidc-subject-v2", "io.kaicorp.linkup.readiness-contract":"sqlite-ro-v1"}
-        self.config = self.put({"architecture": "amd64", "os": "linux", "config": {"Labels": labels}})
-        layer = self.put(b"synthetic layer")
-        runtime = self.put({"config": self.config, "layers": [layer]})
-        attestation = self.put({"config": self.put({}), "layers": [
-            self.put({"predicateType": "https://slsa.dev/provenance/v0.2"}),
-            self.put({"predicateType": "https://spdx.dev/Document"})]})
-        runtime["platform"] = {"architecture": "amd64", "os": "linux"}
-        attestation["platform"] = {"architecture": "unknown", "os": "unknown"}
-        attestation["annotations"] = {"vnd.docker.reference.type": "attestation-manifest"}
-        self.root = {"mediaType": "application/vnd.oci.image.index.v1+json", "manifests": [runtime, attestation]}
+        self.layout = Path(self.tmp.name) / "amd64"
+        self.config, self.root, self.root_digest, self.put_fn = make_layout(self.layout, "amd64")
 
     def put(self, value):
-        data = value if isinstance(value, bytes) else json.dumps(value).encode()
-        digest = hashlib.sha256(data).hexdigest()
-        (self.layout / "blobs/sha256" / digest).write_bytes(data)
-        return {"digest": "sha256:" + digest, "size": len(data)}
+        return self.put_fn(value)
 
-    def verify(self, root=None, expected=None, source=SOURCE):
+    def verify(self, root=None, expected=None, source=SOURCE, expected_arches=("amd64",)):
         raw = json.dumps(root or self.root).encode()
         with patch.object(oci, "command", return_value=raw):
-            return oci.verify(self.layout, expected or "sha256:" + hashlib.sha256(raw).hexdigest(), source)
+            return oci.verify(self.layout, expected or "sha256:" + hashlib.sha256(raw).hexdigest(), source, expected_arches=expected_arches)
 
     def test_valid_graph_returns_exact_runtime_config_id(self):
         self.assertEqual(self.verify(), self.config["digest"])
@@ -72,14 +103,30 @@ class OCITests(unittest.TestCase):
         with self.assertRaises(oci.Refused):
             self.verify(root)
 
+    def test_merge_combines_amd64_and_arm64_and_rejects_tampering(self):
+        arm_layout = Path(self.tmp.name) / "arm64"
+        arm_cfg, _, arm_digest, _ = make_layout(arm_layout, "arm64")
+        out_layout = Path(self.tmp.name) / "merged"
+        with patch.object(oci, "command", side_effect=fake_inspect):
+            merged_digest = oci.merge(self.layout, self.root_digest, arm_layout, arm_digest, SOURCE, out_layout)
+            ids = oci.verify(out_layout, merged_digest, SOURCE, expected_arches=("amd64", "arm64"))
+            self.assertEqual(ids, f"{self.config['digest']},{arm_cfg['digest']}")
+            with self.assertRaises(oci.Refused):
+                oci.verify(self.layout, self.root_digest, SOURCE)
+
     def test_old_or_missing_auth_readiness_contracts_are_rejected(self):
         for label in ("io.kaicorp.linkup.auth-contract", "io.kaicorp.linkup.readiness-contract", "org.opencontainers.image.version"):
-            root=copy.deepcopy(self.root)
-            config=json.loads(oci.blob(self.layout,self.config));config["config"]["Labels"].pop(label)
-            manifest=json.loads(oci.blob(self.layout,root["manifests"][0]));manifest["config"]=self.put(config)
-            descriptor=self.put(manifest);descriptor["platform"]={"architecture":"amd64","os":"linux"}
-            root["manifests"][0]=descriptor
-            with self.subTest(label=label),self.assertRaises(oci.Refused):self.verify(root)
+            root = copy.deepcopy(self.root)
+            config = json.loads(oci.blob(self.layout, self.config))
+            config["config"]["Labels"].pop(label)
+            manifest = json.loads(oci.blob(self.layout, root["manifests"][0]))
+            manifest["config"] = self.put(config)
+            descriptor = self.put(manifest)
+            descriptor["platform"] = {"architecture": "amd64", "os": "linux"}
+            root["manifests"][0] = descriptor
+            root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
+            with self.subTest(label=label), self.assertRaises(oci.Refused):
+                self.verify(root)
 
     def test_external_descriptors_and_symlinks_are_rejected(self):
         descriptor = dict(self.config, urls=["https://example.invalid/config"])
@@ -92,74 +139,100 @@ class OCITests(unittest.TestCase):
             oci.blob(self.layout, self.config)
 
     def test_wrong_release_version_label_cannot_be_published_as_reviewed_version(self):
-        root=copy.deepcopy(self.root)
-        config=json.loads(oci.blob(self.layout,self.config))
-        config['config']['Labels']['org.opencontainers.image.version']='0.8.101'
-        manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
-        descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'}
-        root['manifests'][0]=descriptor
-        with self.assertRaises(oci.Refused):self.verify(root)
+        root = copy.deepcopy(self.root)
+        config = json.loads(oci.blob(self.layout, self.config))
+        config["config"]["Labels"]["org.opencontainers.image.version"] = "0.8.101"
+        manifest = json.loads(oci.blob(self.layout, root["manifests"][0]))
+        manifest["config"] = self.put(config)
+        descriptor = self.put(manifest)
+        descriptor["platform"] = {"architecture": "amd64", "os": "linux"}
+        root["manifests"][0] = descriptor
+        root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
+        with self.assertRaises(oci.Refused):
+            self.verify(root)
 
     def test_publication_is_impossible_from_pr_main_dispatch_or_fork(self):
-        good = {"GITHUB_REF": "refs/tags/v0.8.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/linkup","GITHUB_SHA":SOURCE}
+        good = {"GITHUB_REF": "refs/tags/v0.8.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/linkup", "GITHUB_SHA": SOURCE}
         with patch.dict(os.environ, good, clear=True):
             self.assertEqual(oci.publication_context(SOURCE), "0.8.101")
         for key, value in (("GITHUB_REF", "refs/heads/main"), ("GITHUB_EVENT_NAME", "pull_request"),
                            ("GITHUB_EVENT_NAME", "workflow_dispatch"), ("GITHUB_REPOSITORY", "fork/linkup"),
-                           ("GITHUB_REF","refs/tags/v0.8.0"),("GITHUB_REF","refs/tags/v0.8.1-rc.1"),("GITHUB_SHA","a"*40)):
+                           ("GITHUB_REF", "refs/tags/v0.8.0"), ("GITHUB_REF", "refs/tags/v0.8.1-rc.1"), ("GITHUB_SHA", "a" * 40)):
             with patch.dict(os.environ, dict(good, **{key: value}), clear=True):
                 with self.assertRaises(oci.Refused):
                     oci.publication_context(SOURCE)
 
     def test_historical_rollback_label_is_forbidden_even_on_corrected_runtime(self):
-        root=copy.deepcopy(self.root)
-        config=json.loads(oci.blob(self.layout,self.config));config['config']['Labels']['io.kaicorp.linkup.rollback-image']='ghcr.io/ulzuhan/linkup@sha256:a5290582739571c41f12ce24d8ab1c5967fcd2d62fbb2e1a4854971c3103625f'
-        manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
-        descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'};root['manifests'][0]=descriptor
-        with self.assertRaises(oci.Refused):self.verify(root)
+        root = copy.deepcopy(self.root)
+        config = json.loads(oci.blob(self.layout, self.config))
+        config["config"]["Labels"]["io.kaicorp.linkup.rollback-image"] = "ghcr.io/ulzuhan/linkup@sha256:a5290582739571c41f12ce24d8ab1c5967fcd2d62fbb2e1a4854971c3103625f"
+        manifest = json.loads(oci.blob(self.layout, root["manifests"][0]))
+        manifest["config"] = self.put(config)
+        descriptor = self.put(manifest)
+        descriptor["platform"] = {"architecture": "amd64", "os": "linux"}
+        root["manifests"][0] = descriptor
+        root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
+        with self.assertRaises(oci.Refused):
+            self.verify(root)
 
     def test_missing_or_false_compatible_return_labels_are_rejected(self):
-        for label in ('io.kaicorp.linkup.rollback-image','io.kaicorp.linkup.deployment-lane','io.kaicorp.linkup.automatic-return'):
-            root=copy.deepcopy(self.root);config=json.loads(oci.blob(self.layout,self.config));config['config']['Labels'].pop(label)
-            manifest=json.loads(oci.blob(self.layout,root['manifests'][0]));manifest['config']=self.put(config)
-            descriptor=self.put(manifest);descriptor['platform']={'architecture':'amd64','os':'linux'};root['manifests'][0]=descriptor
-            with self.subTest(label=label),self.assertRaises(oci.Refused):self.verify(root)
+        for label in ("io.kaicorp.linkup.rollback-image", "io.kaicorp.linkup.deployment-lane", "io.kaicorp.linkup.automatic-return"):
+            root = copy.deepcopy(self.root)
+            config = json.loads(oci.blob(self.layout, self.config))
+            config["config"]["Labels"].pop(label)
+            manifest = json.loads(oci.blob(self.layout, root["manifests"][0]))
+            manifest["config"] = self.put(config)
+            descriptor = self.put(manifest)
+            descriptor["platform"] = {"architecture": "amd64", "os": "linux"}
+            root["manifests"][0] = descriptor
+            root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
+            with self.subTest(label=label), self.assertRaises(oci.Refused):
+                self.verify(root)
 
     def test_publication_signature_requires_certificate_source_digest_run_and_attempt(self):
-        expected='sha256:'+'c'*64
-        good=[{'verificationResult':{'signature':{'certificate':{'runInvocationURI':'https://github.com/Ulzuhan/linkup/actions/runs/123/attempts/2','sourceRepositoryDigest':SOURCE}},'statement':{'subject':[{'name':oci.REPOSITORY,'digest':{'sha256':'c'*64}}]}}}]
-        with patch.dict(os.environ,{'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'2'},clear=True):
-            with patch.object(oci,'command',return_value=json.dumps(good).encode()) as call:
-                oci.verify_publication_signature(expected,SOURCE,'0.8.101')
-                self.assertIn('--deny-self-hosted-runners',call.call_args.args)
-                self.assertIn('--source-ref',call.call_args.args)
-            for fault in ('run','attempt','source','subject','digest','predicate-only'):
-                wrong=copy.deepcopy(good);value=wrong[0]['verificationResult'];cert=value['signature']['certificate']
-                if fault=='run':cert['runInvocationURI']='https://github.com/Ulzuhan/linkup/actions/runs/124/attempts/2'
-                elif fault=='attempt':cert['runInvocationURI']='https://github.com/Ulzuhan/linkup/actions/runs/123/attempts/1'
-                elif fault=='source':cert['sourceRepositoryDigest']='a'*40
-                elif fault=='subject':value['statement']['subject'][0]['name']='ghcr.io/another/linkup'
-                elif fault=='digest':value['statement']['subject'][0]['digest']['sha256']='d'*64
-                else:value['statement']['predicate']={'runInvocationURI':cert.pop('runInvocationURI')}
-                with self.subTest(fault=fault),patch.object(oci,'command',return_value=json.dumps(wrong).encode()),self.assertRaises(oci.Refused):
-                    oci.verify_publication_signature(expected,SOURCE,'0.8.101')
+        expected = "sha256:" + "c" * 64
+        good = [{"verificationResult": {"signature": {"certificate": {"runInvocationURI": "https://github.com/Ulzuhan/linkup/actions/runs/123/attempts/2", "sourceRepositoryDigest": SOURCE}}, "statement": {"subject": [{"name": oci.REPOSITORY, "digest": {"sha256": "c" * 64}}]}}}]
+        with patch.dict(os.environ, {"GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "2"}, clear=True):
+            with patch.object(oci, "command", return_value=json.dumps(good).encode()) as call:
+                oci.verify_publication_signature(expected, SOURCE, "0.8.101")
+                self.assertIn("--deny-self-hosted-runners", call.call_args.args)
+                self.assertIn("--source-ref", call.call_args.args)
+            for fault in ("run", "attempt", "source", "subject", "digest", "predicate-only"):
+                wrong = copy.deepcopy(good)
+                value = wrong[0]["verificationResult"]
+                cert = value["signature"]["certificate"]
+                if fault == "run":
+                    cert["runInvocationURI"] = "https://github.com/Ulzuhan/linkup/actions/runs/124/attempts/2"
+                elif fault == "attempt":
+                    cert["runInvocationURI"] = "https://github.com/Ulzuhan/linkup/actions/runs/123/attempts/1"
+                elif fault == "source":
+                    cert["sourceRepositoryDigest"] = "a" * 40
+                elif fault == "subject":
+                    value["statement"]["subject"][0]["name"] = "ghcr.io/another/linkup"
+                elif fault == "digest":
+                    value["statement"]["subject"][0]["digest"]["sha256"] = "d" * 64
+                else:
+                    value["statement"]["predicate"] = {"runInvocationURI": cert.pop("runInvocationURI")}
+                with self.subTest(fault=fault), patch.object(oci, "command", return_value=json.dumps(wrong).encode()), self.assertRaises(oci.Refused):
+                    oci.verify_publication_signature(expected, SOURCE, "0.8.101")
 
     def test_candidate_and_promote_are_blocked_without_policy_before_registry_access(self):
-        for action in ('candidate','promote'):
-            args=['oci-release.py',action,'--layout',str(self.layout),'--digest','sha256:'+'c'*64,'--source',SOURCE]
-            env={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup','GITHUB_SHA':SOURCE}
-            # Verification is already gated in this fixture. The real policy
-            # subprocess refuses a tag outside the reviewed exact version.
-            with patch.object(sys,'argv',args),patch.dict(os.environ,env,clear=True),patch.object(oci,'verify',return_value=self.config['digest']),patch.object(oci,'copy') as copier,patch.object(oci,'immutable_version') as registry:
-                with self.assertRaises(oci.Refused):oci.main()
-                registry.assert_not_called();copier.assert_not_called()
+        for action in ("candidate", "promote"):
+            args = ["oci-release.py", action, "--layout", str(self.layout), "--digest", "sha256:" + "c" * 64, "--source", SOURCE]
+            env = {"GITHUB_REF": "refs/tags/v0.8.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/linkup", "GITHUB_SHA": SOURCE}
+            with patch.object(sys, "argv", args), patch.dict(os.environ, env, clear=True), patch.object(oci, "verify", return_value=self.config["digest"]), patch.object(oci, "copy") as copier, patch.object(oci, "immutable_version") as registry:
+                with self.assertRaises(oci.Refused):
+                    oci.main()
+                registry.assert_not_called()
+                copier.assert_not_called()
 
     def test_prepared_lane_promotes_exact_version_only_without_floating_aliases(self):
-        args=['oci-release.py','promote','--layout',str(self.layout),'--digest','sha256:'+'c'*64,'--source',SOURCE]
-        env={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup','GITHUB_SHA':SOURCE}
-        with patch.object(sys,'argv',args),patch.dict(os.environ,env,clear=True),patch.object(oci,'verify',return_value=self.config['digest']),patch.object(oci,'command',return_value=b''),patch.object(oci,'immutable_version'),patch.object(oci,'verify_publication_signature') as signature,patch.object(oci,'copy') as copier:
-            oci.main();signature.assert_called_once_with('sha256:'+'c'*64,SOURCE,'0.8.101')
-            copier.assert_called_once_with(self.layout,'sha256:'+'c'*64,'0.8.101')
+        args = ["oci-release.py", "promote", "--layout", str(self.layout), "--digest", "sha256:" + "c" * 64, "--source", SOURCE]
+        env = {"GITHUB_REF": "refs/tags/v0.8.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/linkup", "GITHUB_SHA": SOURCE}
+        with patch.object(sys, "argv", args), patch.dict(os.environ, env, clear=True), patch.object(oci, "verify", return_value=self.config["digest"]), patch.object(oci, "command", return_value=b""), patch.object(oci, "immutable_version"), patch.object(oci, "verify_publication_signature") as signature, patch.object(oci, "copy") as copier:
+            oci.main()
+            signature.assert_called_once_with("sha256:" + "c" * 64, SOURCE, "0.8.101")
+            copier.assert_called_once_with(self.layout, "sha256:" + "c" * 64, "0.8.101")
 
     def test_release_version_cannot_be_retagged_and_network_error_is_closed(self):
         expected = "sha256:" + hashlib.sha256(b"existing").hexdigest()

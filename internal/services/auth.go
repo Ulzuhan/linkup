@@ -35,9 +35,26 @@ type AuthService struct {
 	mu           sync.Mutex // protects lazy provider initialization
 	db           *database.DB
 	cfg          *config.Config
+	oidcClient   *http.Client
 	oauth2Config *oauth2.Config
 	verifier     *oidc.IDTokenVerifier
 	provider     *oidc.Provider
+}
+
+func (a *AuthService) ensureOIDCClient() *http.Client {
+	if a.oidcClient == nil && a.cfg != nil && a.cfg.OIDCInternalBase != "" {
+		if c, err := clienteInternoOIDC(a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase); err == nil {
+			a.oidcClient = c
+		}
+	}
+	return a.oidcClient
+}
+
+func (a *AuthService) oidcCtx(ctx context.Context) context.Context {
+	if c := a.ensureOIDCClient(); c != nil {
+		return oidc.ClientContext(ctx, c)
+	}
+	return ctx
 }
 
 // The database is mandatory for OIDC; standalone tests/local mode may omit it.
@@ -48,10 +65,15 @@ func NewAuthService(cfg *config.Config, db ...*database.DB) *AuthService {
 	}
 
 	if cfg.IsOIDCConfigured() {
+		if c, err := clienteInternoOIDC(cfg.OIDCIssuerURL, cfg.OIDCInternalBase); err != nil {
+			log.Printf("[WARN] Invalid OIDC internal base: %v", err)
+		} else {
+			as.oidcClient = c
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		provider, err := descubrirProveedor(ctx, cfg.OIDCIssuerURL, cfg.OIDCInternalBase)
+		provider, err := descubrirProveedor(as.oidcCtx(ctx), cfg.OIDCIssuerURL, cfg.OIDCInternalBase)
 		if err != nil {
 			log.Printf("[WARN] Failed to discover OIDC provider at %s: %v (will retry on login)", cfg.OIDCIssuerURL, err)
 		} else {
@@ -68,7 +90,8 @@ func NewAuthService(cfg *config.Config, db ...*database.DB) *AuthService {
 				// El emisor se comprueba a mano en HandleCallback contra
 				// `emisorValido`, porque hay DOS legítimos cuando el
 				// descubrimiento va por la vía interna. Ver oidc_origen.go.
-				SkipIssuerCheck: cfg.OIDCInternalBase != "",
+				SkipIssuerCheck:      cfg.OIDCInternalBase != "",
+				SupportedSigningAlgs: []string{oidc.RS256, oidc.ES256},
 			})
 			as.oauth2Config = &oauth2.Config{
 				ClientID:     cfg.OIDCClientID,
@@ -155,6 +178,7 @@ func (a *AuthService) HandleCallback(r *http.Request) (*models.UserSession, erro
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
+	ctx = a.oidcCtx(ctx)
 
 	oauth2Token, err := a.oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
@@ -361,14 +385,15 @@ func (a *AuthService) reinitProvider() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	provider, err := descubrirProveedor(ctx, a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase)
+	provider, err := descubrirProveedor(a.oidcCtx(ctx), a.cfg.OIDCIssuerURL, a.cfg.OIDCInternalBase)
 	if err != nil {
 		return err
 	}
 	a.provider = provider
 	a.verifier = provider.Verifier(&oidc.Config{
-		ClientID:        a.cfg.OIDCClientID,
-		SkipIssuerCheck: a.cfg.OIDCInternalBase != "",
+		ClientID:             a.cfg.OIDCClientID,
+		SkipIssuerCheck:      a.cfg.OIDCInternalBase != "",
+		SupportedSigningAlgs: []string{oidc.RS256, oidc.ES256},
 	})
 	endpoint, err := endpointPublico(provider.Endpoint(), a.cfg.OIDCIssuerURL)
 	if err != nil {

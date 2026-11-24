@@ -57,7 +57,7 @@ LINKUP_DEFAULT_DOMAIN=link.example.com
 LINKUP_SESSION_SECRET=          # openssl rand -hex 32
 
 LINKUP_OIDC_ISSUER=https://auth.example.com/application/o/linkup/
-# Optional, and worth it when the provider is a container on the same host:
+# Optional, routes discovery, token, JWKS and UserInfo over internal network (supports RS256 and ES256):
 # LINKUP_OIDC_INTERNAL_BASE=http://authentik:9000
 LINKUP_OIDC_CLIENT_ID=
 LINKUP_OIDC_CLIENT_SECRET=

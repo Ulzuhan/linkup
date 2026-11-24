@@ -1,13 +1,17 @@
 name: Build and verify the scanned OCI artifact
-description: One OCI, functional runtime return over current SQLite, scan and byte verification; never publishes
+description: Native-arch OCI, runtime validation over SQLite, Trivy scan and byte verification; never publishes
 inputs:
+  arch:
+    description: Target CPU architecture (amd64 or arm64)
+    required: false
+    default: amd64
   labels:
     description: Additional metadata labels
     required: false
     default: ''
 outputs:
   digest:
-    description: Exact tested and scanned OCI index
+    description: Exact tested and scanned single-arch OCI index
     value: ${{ steps.build.outputs.digest }}
   layout:
     description: OCI layout
@@ -42,7 +46,7 @@ runs:
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         context: .
-        platforms: linux/amd64
+        platforms: linux/${{ inputs.arch }}
         outputs: type=oci,dest=${{ runner.temp }}/linkup.oci,tar=false
         tags: linkup:release-candidate
         labels: |
@@ -55,8 +59,8 @@ runs:
           ${{ steps.bootstrap.outputs.labels }}
         provenance: mode=max
         sbom: true
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=${{ inputs.arch }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.arch }}
         no-cache: ${{ startsWith(github.ref, 'refs/tags/') }}
     - name: Trivy before any registry write, unchanged blocking policy
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -79,29 +83,76 @@ runs:
       name: Verify every OCI byte and load the exact config ID
       shell: bash
       run: |
-        image_id=$(python3 scripts/oci-release.py load --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
+        image_id=$(python3 scripts/oci-release.py load --arch ${{ inputs.arch }} --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
         echo "LINKUP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
-    - name: Exact C and signed B1, real keys and current SQLite image return
+    - if: inputs.arch == 'amd64'
+      name: Exact C and signed B1, real keys and current SQLite image return
       shell: bash
       run: sudo python3 scripts/image-rehearsal.py --candidate "$LINKUP_TEST_IMAGE" --baseline '${{ steps.rollback.outputs.image }}' --report "$RUNNER_TEMP/linkup-image-report.json"
+    - if: inputs.arch != 'amd64'
+      name: Native arm64 runtime, SQLite readiness and /healthz smoke test
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        import json, os, socket, subprocess, tempfile, time, urllib.request, uuid
+        from pathlib import Path
+        image = os.environ["LINKUP_TEST_IMAGE"]
+        report = Path(os.environ["RUNNER_TEMP"]) / "linkup-image-report.json"
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        name = "linkup-arm64-" + uuid.uuid4().hex[:12]
+        with tempfile.TemporaryDirectory(prefix="linkup-arm64-") as tmp:
+            root = Path(tmp); root.chmod(0o755)
+            data = root / "data"; data.mkdir(mode=0o777); data.chmod(0o777)
+            cid = subprocess.check_output([
+                "docker", "run", "-d", "--name", name, "--network", "host", "--init",
+                "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                "--user", "10001:10001", "--pids-limit", "128", "--memory", "128m",
+                "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=32m",
+                "--mount", f"type=bind,source={data},target=/data",
+                "-e", "LINKUP_HOST=127.0.0.1", "-e", f"LINKUP_PORT={port}",
+                "-e", "LINKUP_DB_PATH=/data/linkup.db",
+                "-e", "LINKUP_PUBLIC_HOST=link.example.invalid",
+                "-e", "LINKUP_DEFAULT_DOMAIN=link.example.invalid",
+                "-e", "LINKUP_SESSION_SECRET=" + ("synthetic-arm64-" * 3),
+                "-e", "LINKUP_DEV_MODE=true",
+                image
+            ], text=True).strip()
+            try:
+                deadline = time.monotonic() + 30
+                while True:
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=3) as r:
+                            body = json.loads(r.read())
+                            assert r.status == 200 and body == {"status": "healthy", "service": "linkup", "sqlite": "ready"}
+                            break
+                    except Exception:
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("arm64 linkup runtime /healthz timeout")
+                        time.sleep(0.2)
+            finally:
+                subprocess.run(["docker", "rm", "-f", cid], capture_output=True)
+        report.write_text(json.dumps({"status": "passed", "arch": "arm64", "checks": ["sqlite init", "/healthz 200", "uid=10001"]}, indent=2) + "\n")
+        PY
     - name: Default runtime identity is uid 10001
       shell: bash
       run: docker run --rm --entrypoint sh "$LINKUP_TEST_IMAGE" -c 'test "$(id -u)" = 10001'
     - name: Archive exact layout for byte-preserving transfer
       shell: bash
       run: |
-        python3 scripts/oci-release.py verify --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}'
-        tar -C "$RUNNER_TEMP" -cf "$RUNNER_TEMP/linkup-oci.tar" linkup.oci
+        python3 scripts/oci-release.py verify --arch ${{ inputs.arch }} --layout "$RUNNER_TEMP/linkup.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}'
+        tar -C "$RUNNER_TEMP" -cf "$RUNNER_TEMP/linkup-oci-${{ inputs.arch }}.tar" linkup.oci
         printf '%s\n' '${{ steps.source.outputs.sha }}' > "$RUNNER_TEMP/linkup-oci-source.txt"
         printf '%s\n' '${{ steps.build.outputs.digest }}' > "$RUNNER_TEMP/linkup-oci-digest.txt"
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: linkup-oci-${{ github.run_id }}
+        name: linkup-oci-${{ inputs.arch }}-${{ github.run_id }}
         path: |
-          ${{ runner.temp }}/linkup-oci.tar
+          ${{ runner.temp }}/linkup-oci-${{ inputs.arch }}.tar
           ${{ runner.temp }}/linkup-oci-source.txt
           ${{ runner.temp }}/linkup-oci-digest.txt
           ${{ runner.temp }}/linkup-image-report.json
         compression-level: 0
-        retention-days: 7
+        retention-days: 1
         if-no-files-found: error

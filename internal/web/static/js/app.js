@@ -764,6 +764,122 @@
     }
   }
 
+  /* ── Landing SSO session detection ────────────────────────────────── */
+  function setupLandingSession() {
+    const landing = $('#landing');
+    const sessionUrl = landing && landing.dataset ? landing.dataset.sessionUrl : '';
+    if (!sessionUrl) return;
+
+    const SIGNED_OUT_KEY = 'kc_signed_out';
+    const ATTEMPTED_KEY = 'kc_sso_attempted';
+    const COOLDOWN_MS = 60_000;
+
+    const readStore = (k) => { try { return window.sessionStorage.getItem(k); } catch { return null; } };
+    const writeStore = (k, v) => { try { window.sessionStorage.setItem(k, v); } catch {} };
+    const clearSuppression = () => {
+      try {
+        window.sessionStorage.removeItem(SIGNED_OUT_KEY);
+        window.sessionStorage.removeItem(ATTEMPTED_KEY);
+      } catch {}
+    };
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('signed_out') === '1') {
+      writeStore(SIGNED_OUT_KEY, '1');
+      url.searchParams.delete('signed_out');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
+    const signinError = url.searchParams.has('error');
+    const attemptedAt = Number(readStore(ATTEMPTED_KEY) || '0');
+    const suppressed =
+      signinError ||
+      readStore(SIGNED_OUT_KEY) === '1' ||
+      (Number.isFinite(attemptedAt) && attemptedAt > 0 && Date.now() - attemptedAt < COOLDOWN_MS);
+
+    const safeAccountUrl = (raw) => {
+      let fallback = '/';
+      try { fallback = new URL('/', sessionUrl).toString(); } catch {}
+      if (typeof raw !== 'string' || !raw) return fallback;
+      try {
+        const parsed = new URL(raw);
+        const loopback = parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost' || parsed.hostname === '[::1]';
+        if (parsed.protocol === 'https:' || (loopback && parsed.protocol === 'http:')) return parsed.toString();
+      } catch {}
+      return fallback;
+    };
+
+    const makeCta = (href, cls, iconName, text, onClick) => {
+      const a = el('a', cls);
+      a.href = href;
+      a.appendChild(icon(iconName));
+      a.appendChild(document.createTextNode(text));
+      if (onClick) on(a, 'click', onClick);
+      return a;
+    };
+
+    const signal =
+      typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(4000)
+        : undefined;
+
+    fetch(sessionUrl, { credentials: 'include', cache: 'no-store', signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (!s || !s.signed_in) return;
+        const name = String(s.name || 'account').slice(0, 40);
+        const accountUrl = safeAccountUrl(s.account_url);
+
+        if (s.tool_access === 'granted') {
+          if (!suppressed) {
+            writeStore(ATTEMPTED_KEY, String(Date.now()));
+            window.location.replace('/auth/login');
+            return;
+          }
+          const heroCta = $('[data-session-cta]', landing);
+          const closeCta = $('[data-session-close-cta]', landing);
+          const fine = $('[data-session-fine]', landing);
+          if (heroCta) heroCta.replaceChildren(makeCta('/auth/login', 'btn btn-primary btn-lg', 'i-login', `Continue as ${name}`, clearSuppression));
+          if (closeCta) {
+            const existingOutline = $('.btn-outline', closeCta);
+            const nodes = [makeCta('/auth/login', 'btn btn-primary btn-lg', 'i-login', `Continue as ${name}`, clearSuppression)];
+            if (existingOutline) nodes.push(existingOutline);
+            closeCta.replaceChildren(...nodes);
+          }
+          if (fine) {
+            fine.replaceChildren(
+              el('span', null, 'Signed in to your KaiCorp Labs account.'),
+              el('span', null, 'Got a short link instead? Open it. Nothing about you is read on the way through.')
+            );
+          }
+          return;
+        }
+
+        if (s.tool_access === 'pending' || s.tool_access === 'requestable' || s.tool_access === 'invite_only') {
+          const label = s.tool_access === 'requestable' ? 'Ask for access' : s.tool_access === 'pending' ? 'View request' : 'Your account';
+          const statusNote = s.tool_access === 'pending' ? 'Waiting for approval' : s.tool_access === 'invite_only' ? 'By invitation only' : 'Request access from your account page';
+          const btnClass = s.tool_access === 'requestable' ? 'btn btn-primary btn-lg' : 'btn btn-outline btn-lg';
+          const heroCta = $('[data-session-cta]', landing);
+          const closeCta = $('[data-session-close-cta]', landing);
+          const fine = $('[data-session-fine]', landing);
+          if (heroCta) heroCta.replaceChildren(makeCta(accountUrl, btnClass, 'i-user-plus', label));
+          if (closeCta) {
+            const existingOutline = $('.btn-outline', closeCta);
+            const nodes = [makeCta(accountUrl, btnClass, 'i-user-plus', label)];
+            if (existingOutline) nodes.push(existingOutline);
+            closeCta.replaceChildren(...nodes);
+          }
+          if (fine) {
+            fine.replaceChildren(
+              el('span', null, `Signed in as ${name} · ${statusNote}.`),
+              el('span', null, 'Got a short link instead? Open it. Nothing about you is read on the way through.')
+            );
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
   /* ── Go ─────────────────────────────────────────────────────────────── */
   function init() {
     setupSegments();
@@ -773,6 +889,7 @@
     setupTimes();
     setupCopy();
     wireDialog($('#confirm-dialog'));
+    setupLandingSession();
     setupDemo();
     setupComposer();
     setupLinks();

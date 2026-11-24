@@ -43,15 +43,27 @@ func NewDashboardHandler(
 func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.authService.GetSession(r)
 
+	if r.URL.Query().Get("sso") == "1" {
+		if session != nil {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		if h.cfg.IsOIDCConfigured() {
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+	}
+
 	// Without a session the front page is a front page, not an empty dashboard
 	// with a sign-in button in the corner. Same shape as the other tools of the
 	// house: what it is, what it does, where to sign in and where to ask.
 	if session == nil {
 		w.WriteHeader(http.StatusOK)
 		_ = h.renderer.Render(w, "landing.html", map[string]interface{}{
-			"Title":     "Short links that do not watch who clicks",
-			"User":      models.UserSession{},
-			"EnrollURL": h.cfg.EnrollURL,
+			"Title":             "Short links that do not watch who clicks",
+			"User":              models.UserSession{},
+			"EnrollURL":         h.cfg.EnrollURL,
+			"AccountSessionURL": h.cfg.ValidAccountSessionURL(),
 		})
 		return
 	}

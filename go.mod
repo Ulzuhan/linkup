@@ -2,7 +2,7 @@ module github.com/Ulzuhan/linkup
 
 go 1.26.0
 
-toolchain go1.27.1
+toolchain go1.27.4
 
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
@@ -16,7 +16,7 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

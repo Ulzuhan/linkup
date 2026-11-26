@@ -9,15 +9,26 @@ BOOTSTRAP_LABELS={"io.kaicorp.linkup.deployment-lane":"supervised-bootstrap-v1",
                   "io.kaicorp.linkup.automatic-return":"false"}
 COMPATIBLE_LABELS={"io.kaicorp.linkup.deployment-lane":"compatible-image-return-v1",
                    "io.kaicorp.linkup.automatic-return":"true"}
+def version_file(root=ROOT):
+ path=root/"VERSION"
+ if path.is_symlink() or not path.is_file():raise ValueError("regular release VERSION file required")
+ version=path.read_text().strip()
+ if not re.fullmatch(r"0\.8\.[1-9][0-9]*",version):raise ValueError("invalid release VERSION")
+ return version
 def bootstrap_policy(root=ROOT):
- data=json.loads((root/"release/bootstrap-policy.json").read_text())
+ version=version_file(root)
+ # Keep the reviewed 0.8.2 policy byte-for-byte. New releases require their
+ # own version-specific manifest; there is no fallback to historical approval.
+ path=root/"release"/("bootstrap-policy.json" if version=="0.8.2" else "bootstrap-policy-"+version+".json")
+ if path.is_symlink() or not path.is_file():raise ValueError("regular exact release policy required")
+ data=json.loads(path.read_text())
  if (set(data)!={"schema","lane","publication_authorized","version","automatic_return","floating_tags"}
      or type(data["schema"]) is not int or data["schema"]!=1
      or data["lane"] not in ("supervised-bootstrap-v1","compatible-image-return-v1")
      or type(data["publication_authorized"]) is not bool
      or data["automatic_return"] is not (data["lane"]=="compatible-image-return-v1") or data["floating_tags"] is not False
      or (data["version"] is not None and (type(data["version"]) is not str or not re.fullmatch(r"0\.8\.[1-9][0-9]*",data["version"])))
-     or ((data["publication_authorized"] or data["automatic_return"]) and data["version"] is None)):
+     or data["version"]!=version):
   raise ValueError("invalid reviewed release/return policy")
  return data
 def release_labels(root=ROOT):
@@ -31,12 +42,7 @@ def release_labels(root=ROOT):
   labels["io.kaicorp.linkup.rollback-image"]="ghcr.io/ulzuhan/linkup@"+baseline["digest"]
  return labels
 def release_version(root=ROOT):
- path=root/"VERSION"
- if path.is_symlink() or not path.is_file():raise ValueError("regular release VERSION file required")
- version=path.read_text().strip()
- if not re.fullmatch(r"0\.8\.[1-9][0-9]*",version) or version!=bootstrap_policy(root)["version"]:
-  raise ValueError("VERSION differs from the reviewed bootstrap tag")
- return version
+ return bootstrap_policy(root)["version"]
 def publication(root=ROOT):
  verify(root)
  data=bootstrap_policy(root)

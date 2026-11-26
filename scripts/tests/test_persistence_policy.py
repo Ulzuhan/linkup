@@ -58,8 +58,8 @@ class PersistenceTests(unittest.TestCase):
     def test_exact_reviewed_go_version_and_canonical_tag_context_required(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'release').mkdir()
-            data=policy.bootstrap_policy();data.update(publication_authorized=True,version='0.8.101')
-            manifest=root/'release/bootstrap-policy.json';manifest.write_text(json.dumps(data))
+            data=policy.bootstrap_policy();data.update(publication_authorized=True,version='0.8.101',lane='compatible-image-return-v1',automatic_return=True)
+            manifest=root/'release/bootstrap-policy-0.8.101.json';manifest.write_text(json.dumps(data))
             version=root/'VERSION';version.write_text('0.8.101\n')
             good={'GITHUB_REF':'refs/tags/v0.8.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
             with patch.object(policy,'verify'),patch.dict(os.environ,good,clear=True):
@@ -74,13 +74,53 @@ class PersistenceTests(unittest.TestCase):
                 with self.assertRaises(ValueError):policy.publication(root)
                 (root/'target').write_text('0.8.101\n');version.symlink_to(root/'target')
                 with self.assertRaises(ValueError):policy.publication(root)
+            version.unlink();version.write_text('0.8.101\n')
             for change in ({'automatic_return':False},{'floating_tags':True},{'schema':True},{'publication_authorized':'true'},{'version':None},{'version':'0.8.0'},{'version':'0.8.1-rc.1'},{'version':0.81},{'unexpected':True},{'lane':'unknown'}):
                 manifest.write_text(json.dumps(dict(data,**change)))
                 with self.subTest(change=change),self.assertRaises(ValueError):policy.bootstrap_policy(root)
 
+    def test_historical_policy_never_authorizes_new_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'release').mkdir()
+            historical=root/'release/bootstrap-policy.json'
+            shutil.copyfile(ROOT/'release/bootstrap-policy.json', historical)
+            version=root/'VERSION';version.write_text('0.8.2\n')
+            self.assertTrue(policy.bootstrap_policy(root)['publication_authorized'])
+            version.write_text('0.8.3\n')
+            with self.assertRaisesRegex(ValueError, 'exact release policy required'):
+                policy.bootstrap_policy(root)
+            candidate=root/'release/bootstrap-policy-0.8.3.json'
+            candidate.symlink_to(historical)
+            with self.assertRaisesRegex(ValueError, 'exact release policy required'):
+                policy.bootstrap_policy(root)
+            candidate.unlink()
+            candidate.write_bytes(historical.read_bytes())
+            with self.assertRaisesRegex(ValueError, 'invalid reviewed release/return policy'):
+                policy.bootstrap_policy(root)
+            # Exercise an unapproved candidate independently of the checkout's
+            # exact release decision, which can be approved in a later commit.
+            fixture=json.loads((ROOT/'release/bootstrap-policy-0.8.3.json').read_text())
+            candidate.write_text(json.dumps(dict(fixture,publication_authorized=False)))
+            self.assertFalse(policy.bootstrap_policy(root)['publication_authorized'])
+            self.assertEqual(policy.release_labels(root)['io.kaicorp.linkup.automatic-return'],'false')
+            self.assertNotIn('io.kaicorp.linkup.rollback-image',policy.release_labels(root))
+            with patch.object(policy,'verify'), patch.dict(os.environ, {
+                'GITHUB_REF':'refs/tags/v0.8.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup',
+            },clear=True), self.assertRaisesRegex(ValueError,'not authorized'):
+                policy.publication(root)
+            candidate.write_text(json.dumps(dict(fixture,publication_authorized=True)))
+            exact={'GITHUB_REF':'refs/tags/v0.8.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
+            with patch.object(policy,'verify'), patch.dict(os.environ,exact,clear=True):
+                self.assertEqual(policy.publication(root),'0.8.3')
+                self.assertNotIn('io.kaicorp.linkup.rollback-image',policy.release_labels(root))
+            with patch.object(policy,'verify'), patch.dict(os.environ,dict(exact,GITHUB_REF='refs/heads/main'),clear=True):
+                with self.assertRaisesRegex(ValueError,'outside the exact'):
+                    policy.publication(root)
+
     def test_compatible_capability_never_authorizes_publication(self):
-        data=dict(policy.bootstrap_policy(),publication_authorized=False)
+        data=dict(policy.bootstrap_policy(),publication_authorized=False, lane='compatible-image-return-v1',automatic_return=True)
         self.assertTrue(data['automatic_return']);self.assertFalse(data['publication_authorized'])
-        self.assertEqual(policy.release_labels()['io.kaicorp.linkup.rollback-image'], 'ghcr.io/ulzuhan/linkup@'+json.loads((ROOT/'release/rollback.json').read_text())['digest'])
+        with patch.object(policy,'bootstrap_policy',return_value=data):
+            self.assertEqual(policy.release_labels()['io.kaicorp.linkup.rollback-image'], 'ghcr.io/ulzuhan/linkup@'+json.loads((ROOT/'release/rollback.json').read_text())['digest'])
         env={'GITHUB_REF':'refs/tags/v'+data['version'],'GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
         with patch.object(policy,'bootstrap_policy',return_value=data),patch.dict(os.environ,env,clear=True),self.assertRaisesRegex(ValueError,'not authorized'):policy.publication()

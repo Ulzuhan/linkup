@@ -97,7 +97,10 @@ class PersistenceTests(unittest.TestCase):
             candidate.write_bytes(historical.read_bytes())
             with self.assertRaisesRegex(ValueError, 'invalid reviewed release/return policy'):
                 policy.bootstrap_policy(root)
-            shutil.copyfile(ROOT/'release/bootstrap-policy-0.8.3.json', candidate)
+            # Exercise an unapproved candidate independently of the checkout's
+            # exact release decision, which can be approved in a later commit.
+            fixture=json.loads((ROOT/'release/bootstrap-policy-0.8.3.json').read_text())
+            candidate.write_text(json.dumps(dict(fixture,publication_authorized=False)))
             self.assertFalse(policy.bootstrap_policy(root)['publication_authorized'])
             self.assertEqual(policy.release_labels(root)['io.kaicorp.linkup.automatic-return'],'false')
             self.assertNotIn('io.kaicorp.linkup.rollback-image',policy.release_labels(root))
@@ -105,6 +108,14 @@ class PersistenceTests(unittest.TestCase):
                 'GITHUB_REF':'refs/tags/v0.8.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup',
             },clear=True), self.assertRaisesRegex(ValueError,'not authorized'):
                 policy.publication(root)
+            candidate.write_text(json.dumps(dict(fixture,publication_authorized=True)))
+            exact={'GITHUB_REF':'refs/tags/v0.8.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/linkup'}
+            with patch.object(policy,'verify'), patch.dict(os.environ,exact,clear=True):
+                self.assertEqual(policy.publication(root),'0.8.3')
+                self.assertNotIn('io.kaicorp.linkup.rollback-image',policy.release_labels(root))
+            with patch.object(policy,'verify'), patch.dict(os.environ,dict(exact,GITHUB_REF='refs/heads/main'),clear=True):
+                with self.assertRaisesRegex(ValueError,'outside the exact'):
+                    policy.publication(root)
 
     def test_compatible_capability_never_authorizes_publication(self):
         data=dict(policy.bootstrap_policy(),publication_authorized=False, lane='compatible-image-return-v1',automatic_return=True)

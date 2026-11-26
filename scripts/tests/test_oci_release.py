@@ -175,8 +175,8 @@ class OCITests(unittest.TestCase):
         with self.assertRaises(oci.Refused):
             self.verify(root)
 
-    def test_missing_or_false_compatible_return_labels_are_rejected(self):
-        for label in ("io.kaicorp.linkup.rollback-image", "io.kaicorp.linkup.deployment-lane", "io.kaicorp.linkup.automatic-return"):
+    def test_missing_reviewed_deployment_lane_and_return_labels_are_rejected(self):
+        for label in ("io.kaicorp.linkup.deployment-lane", "io.kaicorp.linkup.automatic-return"):
             root = copy.deepcopy(self.root)
             config = json.loads(oci.blob(self.layout, self.config))
             config["config"]["Labels"].pop(label)
@@ -187,6 +187,23 @@ class OCITests(unittest.TestCase):
             root["manifests"][0] = descriptor
             root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
             with self.subTest(label=label), self.assertRaises(oci.Refused):
+                self.verify(root)
+
+    def test_compatible_return_lane_still_requires_exact_rollback_label(self):
+        old = dict(oci.policy.bootstrap_policy(), lane="compatible-image-return-v1", automatic_return=True)
+        with patch.object(oci.policy, "bootstrap_policy", return_value=old):
+            self.config, self.root, self.root_digest, self.put_fn = make_layout(self.layout)
+            self.assertEqual(self.verify(), self.config["digest"])
+            config = json.loads(oci.blob(self.layout, self.config))
+            del config["config"]["Labels"]["io.kaicorp.linkup.rollback-image"]
+            root = copy.deepcopy(self.root)
+            manifest = json.loads(oci.blob(self.layout, root["manifests"][0]))
+            manifest["config"] = self.put(config)
+            descriptor = self.put(manifest)
+            descriptor["platform"] = {"architecture": "amd64", "os": "linux"}
+            root["manifests"][0] = descriptor
+            root["manifests"][1]["annotations"]["vnd.docker.reference.digest"] = descriptor["digest"]
+            with self.assertRaises(oci.Refused):
                 self.verify(root)
 
     def test_publication_signature_requires_certificate_source_digest_run_and_attempt(self):

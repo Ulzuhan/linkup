@@ -5,6 +5,7 @@ import base64
 import contextlib
 import hashlib
 import http.server
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,9 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+POLICY_SPEC = importlib.util.spec_from_file_location("linkup_persistence_policy", Path(__file__).with_name("persistence-policy.py"))
+policy = importlib.util.module_from_spec(POLICY_SPEC)
+POLICY_SPEC.loader.exec_module(policy)
 SYNTHETIC_SECRET = "synthetic-only-" * 3
 
 
@@ -319,7 +323,7 @@ def main():
         if args.report:
             args.report.write_text(json.dumps({"status":"passed", "baseline":{**baseline,"runtime_id":b1["Id"],"published":True},
                 "candidate":{"runtime_id":c["Id"],"source":c["Config"]["Labels"]["org.opencontainers.image.revision"],"published":False},
-                "data_action":"image-only-current-sqlite", "publication_authorized":json.loads((ROOT / "release/bootstrap-policy.json").read_text())["publication_authorized"],
+                "data_action":"image-only-current-sqlite", "publication_authorized":policy.bootstrap_policy()["publication_authorized"],
                 "checks":["WAL backup integrity/schema", "B1/C typed cookie and real key routes", "C-created key usable after B1 return",
                     "current writes and original link identity preserved", "pause/delete/budget/counters preserved", "key/session/JTI revocations preserved",
                     "SQLite readiness and discovery/login/PKCE", "separate stale restore proves data loss and credential resurrection"]}, indent=2)+"\n")
